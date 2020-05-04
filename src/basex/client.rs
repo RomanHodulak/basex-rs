@@ -1,16 +1,19 @@
 use super::{Result, Connection, Query};
 
+/// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
+pub enum Command {
+    Query = 0,
+    Create = 8,
+    Add = 9,
+    Replace = 12,
+    Store = 13,
+}
+
 pub struct Client {
     connection: Connection,
 }
 
 impl Client {
-
-    const QUERY_CODE: u8 = 0;
-    const CREATE_CODE: u8 = 8;
-    const ADD_CODE: u8 = 9;
-    const REPLACE_CODE: u8 = 12;
-    const STORE_CODE: u8 = 13;
 
     /// Returns new client instance with the TCP stream bound to it. It assumes that the stream is
     /// connected and authenticated to BaseX server. Unless you need to supply your own stream for
@@ -28,7 +31,7 @@ impl Client {
     /// *  `name` must be a [http://docs.basex.org/wiki/Commands#Valid_Names](valid database name)
     /// *  database creation can be controlled by setting [http://docs.basex.org/wiki/Options#Create_Options](Create Options)
     pub fn create(&mut self, name: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Self::CREATE_CODE, vec![Some(name), input])?;
+        self.connection.send_cmd(Command::Create as u8, vec![Some(name), input])?;
         self.connection.get_response()
     }
 
@@ -36,7 +39,7 @@ impl Client {
     /// directory or XML string specified by input, or adds new documents if no resource exists at
     /// the specified path.
     pub fn replace(&mut self, path: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Self::REPLACE_CODE, vec![Some(path), input])?;
+        self.connection.send_cmd(Command::Replace as u8, vec![Some(path), input])?;
         self.connection.get_response()
     }
 
@@ -46,7 +49,7 @@ impl Client {
     /// *  If the path denotes a directory, it needs to be suffixed with a slash (/).
     /// *  An existing resource will be replaced.
     pub fn store(&mut self, path: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Self::STORE_CODE, vec![Some(path), input])?;
+        self.connection.send_cmd(Command::Store as u8, vec![Some(path), input])?;
         self.connection.get_response()
     }
 
@@ -59,13 +62,13 @@ impl Client {
     /// *  If a file is too large to be added in one go, its data structures will be cached to disk
     /// first. Caching can be enforced by turning the ADDCACHE option on.
     pub fn add(&mut self, path: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Self::ADD_CODE, vec![Some(path), input])?;
+        self.connection.send_cmd(Command::Add as u8, vec![Some(path), input])?;
         self.connection.get_response()
     }
 
     /// Creates new query instance from given XQuery string.
     pub fn query(&mut self, query: &str) -> Result<Query> {
-        self.connection.send_cmd(Self::QUERY_CODE, vec![Some(query)])?;
+        self.connection.send_cmd(Command::Query as u8, vec![Some(query)])?;
         let id = self.connection.get_response()?;
 
         Ok(Query::new(id, self.connection.try_clone()?))
