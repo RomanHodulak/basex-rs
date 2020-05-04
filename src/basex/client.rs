@@ -28,8 +28,8 @@ impl Client {
     /// Creates a new database with the specified name and, optionally, an initial input, and opens
     /// it. An existing database will be overwritten. The input can be a file or directory path to
     /// XML documents, a remote URL, or a string containing XML.
-    /// *  `name` must be a [http://docs.basex.org/wiki/Commands#Valid_Names](valid database name)
-    /// *  database creation can be controlled by setting [http://docs.basex.org/wiki/Options#Create_Options](Create Options)
+    /// *  `name` must be a [valid database name](http://docs.basex.org/wiki/Commands#Valid_Names)
+    /// *  database creation can be controlled by setting [Create Options](http://docs.basex.org/wiki/Options#Create_Options)
     pub fn create(&mut self, name: &str, input: Option<&str>) -> Result<String> {
         self.connection.send_cmd(Command::Create as u8, vec![Some(name), input])?;
         self.connection.get_response()
