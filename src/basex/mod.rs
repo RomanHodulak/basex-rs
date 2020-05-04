@@ -4,9 +4,6 @@ mod errors;
 mod query;
 
 use std::net::TcpStream;
-use std::io::{Write, Read, Error};
-use std::string::FromUtf8Error;
-use std::fmt::{Display, Formatter};
 
 pub use client::Client;
 pub use connection::Connection;
