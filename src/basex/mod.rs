@@ -14,7 +14,7 @@ pub type Result<T> = std::result::Result<T, ClientError>;
 
 /// Connects and authenticates to BaseX server.
 pub fn connect(host: &str, port: u16, user: &str, password: &str) -> Result<Client> {
-    let mut stream = TcpStream::connect(&format!("{}:{}", host, port))?;
+    let stream = TcpStream::connect(&format!("{}:{}", host, port))?;
     let mut connection = Connection::new(stream);
     connection.authenticate(user, password)?;
 
