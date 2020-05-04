@@ -19,7 +19,7 @@ pub type Result<T> = std::result::Result<T, ClientError>;
 pub fn connect(host: &str, port: u16, user: &str, password: &str) -> Result<Client> {
     let mut stream = TcpStream::connect(&format!("{}:{}", host, port))?;
     let mut connection = Connection::new(stream);
-    connection.authenticate(host, port, user, password)?;
+    connection.authenticate(user, password)?;
 
     Ok(Client::new(connection))
 }

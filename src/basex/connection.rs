@@ -13,7 +13,7 @@ impl Connection {
         Self { stream }
     }
 
-    pub(crate) fn authenticate(&mut self, host: &str, port: u16, user: &str, password: &str) -> Result<&Self> {
+    pub(crate) fn authenticate(&mut self, user: &str, password: &str) -> Result<&Self> {
         let response = self.read_string()?;
 
         let challenge: Vec<&str> = response.split(":").collect();
