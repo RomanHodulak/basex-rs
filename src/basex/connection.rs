@@ -155,4 +155,39 @@ mod tests {
 
         assert_eq!(expected_buffer, actual_buffer, "Connection properly sends command with arguments {} and {}", argument_foo, argument_bar);
     }
+
+    #[test]
+    fn test_connection_fails_to_send_command_with_failing_stream() {
+        struct FailingStream;
+
+        impl Read for FailingStream {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                panic!("Unexpected call to read")
+            }
+        }
+
+        impl Write for FailingStream {
+            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::new(std::io::ErrorKind::Other, ""))
+            }
+
+            fn flush(&mut self) -> std::io::Result<()> {
+                panic!("Unexpected call to flush")
+            }
+        }
+
+        impl<'a> BasexStream<'a> for FailingStream {
+            fn try_clone(&'a mut self) -> Result<Self> {
+                todo!()
+            }
+        }
+
+        let mut connection = Connection::new(FailingStream);
+
+        let result = connection.send_cmd(1, vec![]);
+        let actual_error = result.err().expect("Operation must fail");
+        let expected_error = ClientError::Io(std::io::Error::new(std::io::ErrorKind::Other, ""));
+
+        assert!(matches!(expected_error, actual_error));
+    }
 }

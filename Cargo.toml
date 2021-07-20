@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 md5 = "0.6.1"
+matches = "0.1.8"
