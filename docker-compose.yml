@@ -1,0 +1,13 @@
+version: "3.7"
+services:
+    basex:
+        image: basex/basexhttp:9.1.2
+        container_name: basex_client-basex
+        volumes:
+            - ./docker/data:/srv/basex/data
+        environment:
+            - BASEX_JVM=-Xmx1g
+        ports:
+            - 1984:1984
+            - 8984:8984
+            - 8985:8985

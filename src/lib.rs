@@ -4,10 +4,12 @@ mod basex;
 mod tests {
     #[test]
     fn it_works() {
-        match crate::basex::connect("basex", 1984, "admin", "admin") {
-            Ok(_c) => {},
-            Err(e) => println!("{}", e)
-        }
-        assert_eq!(2 + 2, 4);
+        let mut client = crate::basex::connect("basex", 1984, "admin", "admin").unwrap();
+        let info = client.create("lambada", Some("<None><Text></Text><Lala></Lala><Papa></Papa></None>")).unwrap();
+        println!("{}", &info);
+        let mut query = client.query("count(/None/*)").unwrap();
+        let result = query.execute().unwrap();
+        assert_eq!(result, "3");
+        let _ = query.close().unwrap();
     }
 }

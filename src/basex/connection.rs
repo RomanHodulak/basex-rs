@@ -1,16 +1,17 @@
-use crate::basex::ClientError;
+use crate::basex::{ClientError, BasexStream};
 use super::Result;
-use std::net::TcpStream;
 use std::io::{Write, Read};
+use std::marker::PhantomData;
 
-pub struct Connection {
-    stream: TcpStream,
+pub struct Connection<'a, T> where T: BasexStream<'a> {
+    stream: T,
+    phantom: PhantomData<&'a T>,
 }
 
-impl Connection {
+impl<'a, T> Connection<'a, T> where T: BasexStream<'a> {
 
-    pub fn new(stream: TcpStream) -> Self {
-        Self { stream }
+    pub fn new(stream: T) -> Self {
+        Self { stream, phantom: PhantomData }
     }
 
     pub(crate) fn authenticate(&mut self, user: &str, password: &str) -> Result<&Self> {
@@ -89,9 +90,10 @@ impl Connection {
     }
 
     /// Creates a new connection with a new independently owned handle to the underlying socket.
-    pub(crate) fn try_clone(&self) -> Result<Self> {
+    pub(crate) fn try_clone(&'a mut self) -> Result<Self> {
         Ok(Self {
-            stream: self.stream.try_clone()?
+            stream: self.stream.try_clone()?,
+            phantom: PhantomData
         })
     }
 }
