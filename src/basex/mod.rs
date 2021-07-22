@@ -35,3 +35,52 @@ impl DatabaseStream<'_> for TcpStream {
         Ok(TcpStream::try_clone(self)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    pub(crate) struct MockStream<'a> {
+        buffer: &'a mut Vec<u8>,
+        response: String,
+    }
+
+    impl<'a> MockStream<'a> {
+        pub(crate) fn new(buffer: &'a mut Vec<u8>, response: String) -> Self {
+            Self { buffer, response }
+        }
+    }
+
+    impl ToString for MockStream<'_> {
+        fn to_string(&self) -> String {
+            String::from_utf8(self.buffer.clone()).unwrap()
+        }
+    }
+
+    impl Read for MockStream<'_> {
+        fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            let size = self.response.as_bytes().len();
+            (&mut *buf).write_all(self.response.as_bytes());
+            (&mut *buf).write(&[0 as u8]);
+            Ok(size)
+        }
+    }
+
+    impl Write for MockStream<'_> {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            let bytes_written = buf.len();
+            self.buffer.extend(buf);
+            Ok(bytes_written)
+        }
+
+        fn flush(&mut self) -> std::io::Result<()> {
+            unimplemented!()
+        }
+    }
+
+    impl<'a> DatabaseStream<'a> for MockStream<'a> {
+        fn try_clone(&'a mut self) -> Result<Self> {
+            Ok(MockStream::new(self.buffer, self.response.clone()))
+        }
+    }
+}

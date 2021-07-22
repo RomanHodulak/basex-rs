@@ -1,4 +1,4 @@
-mod basex;
+pub mod basex;
 
 #[cfg(test)]
 mod tests {
