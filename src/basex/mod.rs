@@ -26,11 +26,11 @@ pub fn connect<'a>(host: &str, port: u16, user: &str, password: &str) -> Result<
 ///
 /// The BaseX connection requires r/w stream and also a clone method that creates a copy of itself
 /// but is expected to reference the same stream.
-pub trait BasexStream<'a>: Read + Write + Sized {
+pub trait DatabaseStream<'a>: Read + Write + Sized {
     fn try_clone(&'a mut self) -> Result<Self>;
 }
 
-impl BasexStream<'_> for TcpStream {
+impl DatabaseStream<'_> for TcpStream {
     fn try_clone(&mut self) -> Result<Self> {
         Ok(TcpStream::try_clone(self)?)
     }

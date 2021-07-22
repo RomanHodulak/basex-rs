@@ -1,8 +1,9 @@
 use super::{Result, Connection};
 use std::io::{Read, Write};
-use crate::basex::BasexStream;
+use crate::basex::DatabaseStream;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
+#[derive(Debug)]
 pub enum Command {
     Close = 2,
     Bind = 3,
@@ -14,12 +15,12 @@ pub enum Command {
     Updating = 0x1e,
 }
 
-pub struct Query<'a, T> where T: BasexStream<'a> {
+pub struct Query<'a, T> where T: DatabaseStream<'a> {
     id: String,
     connection: Connection<'a, T>,
 }
 
-impl<'a, T> Query<'a, T> where T: BasexStream<'a> {
+impl<'a, T> Query<'a, T> where T: DatabaseStream<'a> {
 
     pub fn new(id: String, connection: Connection<'a, T>) -> Self {
         Self { id, connection }
@@ -62,6 +63,10 @@ impl<'a, T> Query<'a, T> where T: BasexStream<'a> {
         self.connection.send_cmd(Command::Updating as u8, vec![Some(&self.id)])?;
         self.connection.get_response()
     }
+
+    pub fn into_inner(self) -> Connection<'a, T> {
+        self.connection
+    }
 }
 
 #[cfg(test)]
@@ -76,6 +81,12 @@ mod tests {
     impl<'a> MockStream<'a> {
         fn new(buffer: &'a mut Vec<u8>, response: String) -> Self {
             Self { buffer, response }
+        }
+    }
+
+    impl ToString for MockStream<'_> {
+        fn to_string(&self) -> String {
+            String::from_utf8(self.buffer.clone()).unwrap()
         }
     }
 
@@ -100,7 +111,7 @@ mod tests {
         }
     }
 
-    impl<'a> BasexStream<'a> for MockStream<'a> {
+    impl<'a> DatabaseStream<'a> for MockStream<'a> {
         fn try_clone(&'a mut self) -> Result<Self> {
             Ok(MockStream::new(self.buffer, self.response.clone()))
         }
@@ -111,11 +122,20 @@ mod tests {
         let mut buffer = vec![];
         let expected_response = "test_response";
         let stream = MockStream::new(&mut buffer, expected_response.to_owned());
-        let connection = Connection::new(stream);
 
-        let mut query = Query::new("test".to_owned(), connection);
-        let actual_response = query.bind("foo", Some("aaa"), Some("integer"));
-        let haha = String::from_utf8(buffer).unwrap();
-        println!("{}", haha);
+        let stream = {
+            let connection = Connection::new(stream);
+
+            let mut query = Query::new("test".to_owned(), connection);
+            query.bind("foo", Some("aaa"), Some("integer"));
+
+            query.into_inner().into_inner()
+        };
+
+        let actual_buffer = stream.to_string();
+        let expected_buffer = String::from_utf8(vec![Command::Bind as u8]).unwrap()
+            + "test\u{0}foo\u{0}aaa\u{0}integer\u{0}";
+
+        assert_eq!(expected_buffer, actual_buffer);
     }
 }

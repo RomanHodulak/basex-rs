@@ -1,14 +1,14 @@
-use crate::basex::{ClientError, BasexStream};
+use crate::basex::{ClientError, DatabaseStream};
 use super::Result;
 use std::io::{Write, Read};
 use std::marker::PhantomData;
 
-pub struct Connection<'a, T> where T: BasexStream<'a> {
+pub struct Connection<'a, T> where T: DatabaseStream<'a> {
     stream: T,
     phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> Connection<'a, T> where T: BasexStream<'a> {
+impl<'a, T> Connection<'a, T> where T: DatabaseStream<'a> {
 
     pub fn new(stream: T) -> Self {
         Self { stream, phantom: PhantomData }
@@ -96,6 +96,10 @@ impl<'a, T> Connection<'a, T> where T: BasexStream<'a> {
             phantom: PhantomData
         })
     }
+
+    pub(crate) fn into_inner(self) -> T {
+        self.stream
+    }
 }
 
 #[cfg(test)]
@@ -110,6 +114,12 @@ mod tests {
     impl<'a> MockStream<'a> {
         fn new(buffer: &'a mut Vec<u8>, response: String) -> Self {
             Self { buffer, response }
+        }
+    }
+
+    impl ToString for MockStream<'_> {
+        fn to_string(&self) -> String {
+            String::from_utf8(self.buffer.clone()).unwrap()
         }
     }
 
@@ -134,9 +144,15 @@ mod tests {
         }
     }
 
-    impl<'a> BasexStream<'a> for MockStream<'a> {
+    impl<'a> DatabaseStream<'a> for MockStream<'a> {
         fn try_clone(&'a mut self) -> Result<Self> {
             Ok(MockStream::new(self.buffer, self.response.clone()))
+        }
+    }
+
+    impl<'a> Connection<'a, MockStream<'a>> {
+        fn buffer_as_string(&'a mut self) -> String {
+            self.stream.to_string()
         }
     }
 
@@ -149,9 +165,10 @@ mod tests {
 
         let argument_foo = "foo";
         let argument_bar = "bar";
+
         connection.send_cmd(1, vec![Some(argument_foo), Some(argument_bar)]);
-        let actual_buffer = String::from_utf8(buffer).unwrap();
-        let expected_buffer = format!("\u{1}foo\u{0}bar\u{0}");
+        let actual_buffer = connection.buffer_as_string();
+        let expected_buffer = "\u{1}foo\u{0}bar\u{0}".to_owned();
 
         assert_eq!(expected_buffer, actual_buffer, "Connection properly sends command with arguments {} and {}", argument_foo, argument_bar);
     }
@@ -172,13 +189,13 @@ mod tests {
             }
 
             fn flush(&mut self) -> std::io::Result<()> {
-                panic!("Unexpected call to flush")
+                unimplemented!()
             }
         }
 
-        impl<'a> BasexStream<'a> for FailingStream {
+        impl<'a> DatabaseStream<'a> for FailingStream {
             fn try_clone(&'a mut self) -> Result<Self> {
-                todo!()
+                unimplemented!()
             }
         }
 

@@ -1,6 +1,6 @@
 use super::{Result, Connection, Query};
 use std::io::{Read, Write};
-use crate::basex::BasexStream;
+use crate::basex::DatabaseStream;
 use std::marker::PhantomData;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
@@ -12,12 +12,12 @@ pub enum Command {
     Store = 13,
 }
 
-pub struct Client<'a, T> where T: BasexStream<'a> {
+pub struct Client<'a, T> where T: DatabaseStream<'a> {
     connection: Connection<'a, T>,
     phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> Client<'a, T> where T: BasexStream<'a> {
+impl<'a, T> Client<'a, T> where T: DatabaseStream<'a> {
 
     /// Returns new client instance with the TCP stream bound to it. It assumes that the stream is
     /// connected and authenticated to BaseX server. Unless you need to supply your own stream for
