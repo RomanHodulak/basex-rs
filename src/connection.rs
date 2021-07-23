@@ -1,4 +1,4 @@
-use crate::basex::{ClientError, DatabaseStream};
+use crate::{ClientError, DatabaseStream};
 use super::Result;
 use std::io::{Write, Read};
 
@@ -102,7 +102,7 @@ impl<T> Connection<T> where T: DatabaseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::basex::tests::MockStream;
+    use crate::tests::MockStream;
 
     #[test]
     fn test_connection_sends_command_with_arguments() {

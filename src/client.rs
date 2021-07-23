@@ -1,6 +1,6 @@
 use super::{Result, Connection, Query};
 use std::io::{Read, Write};
-use crate::basex::DatabaseStream;
+use crate::DatabaseStream;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 pub enum Command {
@@ -21,7 +21,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// connected and authenticated to BaseX server. Unless you need to supply your own stream for
     /// some reason, instead of calling this use the factory method. Example:
     /// ```rust
-    /// let client = basex::connect("localhost", 8984, "admin", "admin");
+    /// let client = basex_client::connect("localhost", 1984, "admin", "admin");
     /// ```
     pub fn new(connection: Connection<T>) -> Self {
         Self { connection }

@@ -1,6 +1,6 @@
 use super::{Result, Connection};
 use std::io::{Read, Write};
-use crate::basex::DatabaseStream;
+use crate::DatabaseStream;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
 #[derive(Debug)]
@@ -72,7 +72,7 @@ impl<T> Query<T> where T: DatabaseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::basex::tests::MockStream;
+    use crate::tests::MockStream;
 
     #[test]
     fn test_query_binds_arguments() {
