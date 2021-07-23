@@ -1,8 +1,9 @@
 use basex_client;
+use basex_client::Client;
 
 #[test]
 fn test_executing_simple_query() {
-    let mut client = basex_client::connect("basex", 1984, "admin", "admin").unwrap();
+    let mut client = Client::connect("basex", 1984, "admin", "admin").unwrap();
 
     let info = client.create("lambada", Some("<None><Text></Text><Lala></Lala><Papa></Papa></None>")).unwrap();
     assert!(info.starts_with("Database 'lambada' created"));

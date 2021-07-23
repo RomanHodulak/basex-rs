@@ -1,6 +1,4 @@
-use super::{Result, Connection};
-use std::io::{Read, Write};
-use crate::DatabaseStream;
+use crate::{Result, Connection, DatabaseStream};
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
 #[derive(Debug)]

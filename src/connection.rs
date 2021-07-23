@@ -1,6 +1,4 @@
-use crate::{ClientError, DatabaseStream};
-use super::Result;
-use std::io::{Write, Read};
+use crate::{ClientError, DatabaseStream, Result};
 
 pub struct Connection<T> where T: DatabaseStream {
     stream: T,
@@ -103,6 +101,7 @@ impl<T> Connection<T> where T: DatabaseStream {
 mod tests {
     use super::*;
     use crate::tests::MockStream;
+    use std::io::{Write, Read};
 
     #[test]
     fn test_connection_sends_command_with_arguments() {

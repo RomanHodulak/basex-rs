@@ -1,6 +1,5 @@
-use super::{Result, Connection, Query};
-use std::io::{Read, Write};
-use crate::DatabaseStream;
+use crate::{Result, Connection, Query, DatabaseStream};
+use std::net::TcpStream;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 pub enum Command {
@@ -15,13 +14,26 @@ pub struct Client<T> where T: DatabaseStream {
     connection: Connection<T>,
 }
 
+impl Client<TcpStream> {
+    /// Connects and authenticates to BaseX server.
+    pub fn connect(host: &str, port: u16, user: &str, password: &str) -> Result<Client<TcpStream>> {
+        let stream = TcpStream::connect(&format!("{}:{}", host, port))?;
+        let mut connection = Connection::new(stream);
+        connection.authenticate(user, password)?;
+
+        Ok(Client::new(connection))
+    }
+}
+
 impl<T> Client<T> where T: DatabaseStream {
 
     /// Returns new client instance with the TCP stream bound to it. It assumes that the stream is
     /// connected and authenticated to BaseX server. Unless you need to supply your own stream for
     /// some reason, instead of calling this use the factory method. Example:
     /// ```rust
-    /// let client = basex_client::connect("localhost", 1984, "admin", "admin");
+    /// use basex_client::Client;
+    ///
+    /// let client = Client::connect("localhost", 1984, "admin", "admin");
     /// ```
     pub fn new(connection: Connection<T>) -> Self {
         Self { connection }
