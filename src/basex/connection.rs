@@ -1,17 +1,15 @@
 use crate::basex::{ClientError, DatabaseStream};
 use super::Result;
 use std::io::{Write, Read};
-use std::marker::PhantomData;
 
-pub struct Connection<'a, T> where T: DatabaseStream<'a> {
+pub struct Connection<T> where T: DatabaseStream {
     stream: T,
-    phantom: PhantomData<&'a T>,
 }
 
-impl<'a, T> Connection<'a, T> where T: DatabaseStream<'a> {
+impl<T> Connection<T> where T: DatabaseStream {
 
     pub fn new(stream: T) -> Self {
-        Self { stream, phantom: PhantomData }
+        Self { stream }
     }
 
     pub(crate) fn authenticate(&mut self, user: &str, password: &str) -> Result<&Self> {
@@ -90,10 +88,9 @@ impl<'a, T> Connection<'a, T> where T: DatabaseStream<'a> {
     }
 
     /// Creates a new connection with a new independently owned handle to the underlying socket.
-    pub(crate) fn try_clone(&'a mut self) -> Result<Self> {
+    pub(crate) fn try_clone(&mut self) -> Result<Self> {
         Ok(Self {
             stream: self.stream.try_clone()?,
-            phantom: PhantomData
         })
     }
 
@@ -109,9 +106,8 @@ mod tests {
 
     #[test]
     fn test_connection_sends_command_with_arguments() {
-        let mut buffer = vec![];
         let expected_response = "test_response";
-        let stream = MockStream::new(&mut buffer, expected_response.to_owned());
+        let stream = MockStream::new(expected_response.to_owned());
         let mut connection = Connection::new(stream);
 
         let argument_foo = "foo";
@@ -144,8 +140,8 @@ mod tests {
             }
         }
 
-        impl<'a> DatabaseStream<'a> for FailingStream {
-            fn try_clone(&'a mut self) -> Result<Self> {
+        impl DatabaseStream for FailingStream {
+            fn try_clone(&mut self) -> Result<Self> {
                 unimplemented!()
             }
         }

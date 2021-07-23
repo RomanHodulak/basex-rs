@@ -1,7 +1,6 @@
 use super::{Result, Connection, Query};
 use std::io::{Read, Write};
 use crate::basex::DatabaseStream;
-use std::marker::PhantomData;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 pub enum Command {
@@ -12,12 +11,11 @@ pub enum Command {
     Store = 13,
 }
 
-pub struct Client<'a, T> where T: DatabaseStream<'a> {
-    connection: Connection<'a, T>,
-    phantom: PhantomData<&'a T>,
+pub struct Client<T> where T: DatabaseStream {
+    connection: Connection<T>,
 }
 
-impl<'a, T> Client<'a, T> where T: DatabaseStream<'a> {
+impl<T> Client<T> where T: DatabaseStream {
 
     /// Returns new client instance with the TCP stream bound to it. It assumes that the stream is
     /// connected and authenticated to BaseX server. Unless you need to supply your own stream for
@@ -25,8 +23,8 @@ impl<'a, T> Client<'a, T> where T: DatabaseStream<'a> {
     /// ```rust
     /// let client = basex::connect("localhost", 8984, "admin", "admin");
     /// ```
-    pub fn new(connection: Connection<'a, T>) -> Self {
-        Self { connection, phantom: PhantomData }
+    pub fn new(connection: Connection<T>) -> Self {
+        Self { connection }
     }
 
     /// Creates a new database with the specified name and, optionally, an initial input, and opens
@@ -71,7 +69,7 @@ impl<'a, T> Client<'a, T> where T: DatabaseStream<'a> {
     }
 
     /// Creates new query instance from given XQuery string.
-    pub fn query(&'a mut self, query: &str) -> Result<Query<T>> {
+    pub fn query(&mut self, query: &str) -> Result<Query<T>> {
         self.connection.send_cmd(Command::Query as u8, vec![Some(query)])?;
         let id = self.connection.get_response()?;
 

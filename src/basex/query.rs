@@ -15,14 +15,14 @@ pub enum Command {
     Updating = 0x1e,
 }
 
-pub struct Query<'a, T> where T: DatabaseStream<'a> {
+pub struct Query<T> where T: DatabaseStream {
     id: String,
-    connection: Connection<'a, T>,
+    connection: Connection<T>,
 }
 
-impl<'a, T> Query<'a, T> where T: DatabaseStream<'a> {
+impl<T> Query<T> where T: DatabaseStream {
 
-    pub fn new(id: String, connection: Connection<'a, T>) -> Self {
+    pub fn new(id: String, connection: Connection<T>) -> Self {
         Self { id, connection }
     }
 
@@ -64,7 +64,7 @@ impl<'a, T> Query<'a, T> where T: DatabaseStream<'a> {
         self.connection.get_response()
     }
 
-    pub fn into_inner(self) -> Connection<'a, T> {
+    pub fn into_inner(self) -> Connection<T> {
         self.connection
     }
 }
@@ -76,9 +76,8 @@ mod tests {
 
     #[test]
     fn test_query_binds_arguments() {
-        let mut buffer = vec![];
         let expected_response = "test_response";
-        let stream = MockStream::new(&mut buffer, expected_response.to_owned());
+        let stream = MockStream::new(expected_response.to_owned());
 
         let stream = {
             let connection = Connection::new(stream);
