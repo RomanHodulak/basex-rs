@@ -1,4 +1,5 @@
-use super::{Result, Connection, Query};
+use crate::{Result, Connection, Query, DatabaseStream};
+use std::net::TcpStream;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 pub enum Command {
@@ -9,19 +10,32 @@ pub enum Command {
     Store = 13,
 }
 
-pub struct Client {
-    connection: Connection,
+pub struct Client<T> where T: DatabaseStream {
+    connection: Connection<T>,
 }
 
-impl Client {
+impl Client<TcpStream> {
+    /// Connects and authenticates to BaseX server.
+    pub fn connect(host: &str, port: u16, user: &str, password: &str) -> Result<Client<TcpStream>> {
+        let stream = TcpStream::connect(&format!("{}:{}", host, port))?;
+        let mut connection = Connection::new(stream);
+        connection.authenticate(user, password)?;
+
+        Ok(Client::new(connection))
+    }
+}
+
+impl<T> Client<T> where T: DatabaseStream {
 
     /// Returns new client instance with the TCP stream bound to it. It assumes that the stream is
     /// connected and authenticated to BaseX server. Unless you need to supply your own stream for
     /// some reason, instead of calling this use the factory method. Example:
     /// ```rust
-    /// let client = basex::connect("localhost", 8984, "admin", "admin");
+    /// use basex_client::Client;
+    ///
+    /// let client = Client::connect("localhost", 1984, "admin", "admin");
     /// ```
-    pub fn new(connection: Connection) -> Self {
+    pub fn new(connection: Connection<T>) -> Self {
         Self { connection }
     }
 
@@ -67,10 +81,19 @@ impl Client {
     }
 
     /// Creates new query instance from given XQuery string.
-    pub fn query(&mut self, query: &str) -> Result<Query> {
+    pub fn query(&mut self, query: &str) -> Result<Query<T>> {
         self.connection.send_cmd(Command::Query as u8, vec![Some(query)])?;
         let id = self.connection.get_response()?;
 
         Ok(Query::new(id, self.connection.try_clone()?))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
     }
 }

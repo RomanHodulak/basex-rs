@@ -1,13 +1,14 @@
-mod basex;
+mod client;
+mod connection;
+mod errors;
+mod query;
+mod stream;
+mod tests;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        match crate::basex::connect("basex", 1984, "admin", "admin") {
-            Ok(_c) => {},
-            Err(e) => println!("{}", e)
-        }
-        assert_eq!(2 + 2, 4);
-    }
-}
+pub use client::Client;
+pub use connection::Connection;
+pub use errors::ClientError;
+pub use query::Query;
+pub use stream::DatabaseStream;
+
+pub type Result<T> = std::result::Result<T, ClientError>;

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<sklad>
+    <artikl>
+        <kod>A01</kod>
+        <skladem>2</skladem>
+    </artikl>
+    <artikl>
+        <kod>B01</kod>
+        <skladem>5</skladem>
+    </artikl>
+    <artikl>
+        <kod>C01</kod>
+        <skladem>0</skladem>
+    </artikl>
+</sklad>

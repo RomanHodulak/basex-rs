@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<katalog>
+    <polozka>
+        <id>A01</id>
+        <title>Item A01</title>
+    </polozka>
+    <polozka>
+        <id>B01</id>
+        <title>Item B01</title>
+    </polozka>
+    <polozka>
+        <id>C01</id>
+        <title>Item C01</title>
+    </polozka>
+</katalog>
