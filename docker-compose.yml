@@ -5,6 +5,7 @@ services:
         container_name: basex_client-basex
         volumes:
             - ./docker/data:/srv/basex/data
+            - ./tests/files:/tmp/files
         environment:
             - BASEX_JVM=-Xmx1g
         ports:
