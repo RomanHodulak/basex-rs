@@ -1,0 +1,29 @@
+<PRODUCTS version="1.0">
+  <PRODUCT>
+    <CODE>A01</CODE>
+    <STOCK>2</STOCK>
+    <DESCRIPTIONS>
+      <DESCRIPTION language="cs">
+        <TITLE>Item A01</TITLE>
+      </DESCRIPTION>
+    </DESCRIPTIONS>
+  </PRODUCT>
+  <PRODUCT>
+    <CODE>B01</CODE>
+    <STOCK>5</STOCK>
+    <DESCRIPTIONS>
+      <DESCRIPTION language="cs">
+        <TITLE>Item B01</TITLE>
+      </DESCRIPTION>
+    </DESCRIPTIONS>
+  </PRODUCT>
+  <PRODUCT>
+    <CODE>C01</CODE>
+    <STOCK>0</STOCK>
+    <DESCRIPTIONS>
+      <DESCRIPTION language="cs">
+        <TITLE>Item C01</TITLE>
+      </DESCRIPTION>
+    </DESCRIPTIONS>
+  </PRODUCT>
+</PRODUCTS>
