@@ -6,7 +6,7 @@ use common::Asset;
 
 #[test]
 fn test_executing_query_with_2_files() {
-    let mut client = Client::connect("basex", 1984, "admin", "admin").unwrap();
+    let mut client = Client::connect("localhost", 1984, "admin", "admin").unwrap();
 
     let info = client.create("lambada", None).unwrap();
     assert!(info.starts_with("Database 'lambada' created"));

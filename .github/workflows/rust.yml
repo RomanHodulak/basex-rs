@@ -16,7 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build
+    - name: Build binary
       run: cargo build --verbose
+    - name: Set up database
+      run: docker-compose up -d && sudo chown -R 1984:1984 docker
     - name: Run tests
       run: cargo test --verbose
