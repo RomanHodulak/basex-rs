@@ -31,7 +31,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// connected and authenticated to BaseX server. Unless you need to supply your own stream for
     /// some reason, instead of calling this use the factory method. Example:
     /// ```rust
-    /// use basex_client::Client;
+    /// use basex::Client;
     ///
     /// let client = Client::connect("localhost", 1984, "admin", "admin");
     /// ```

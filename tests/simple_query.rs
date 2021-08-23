@@ -1,5 +1,5 @@
-use basex_client;
-use basex_client::Client;
+use basex;
+use basex::Client;
 
 #[test]
 fn test_executing_simple_query() {

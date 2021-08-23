@@ -1,12 +1,18 @@
 [package]
-name = "basex_client"
+name = "basex"
 version = "0.1.0"
-authors = ["Roman Hodulák <roman@hodulak.dev>"]
+authors = ["Roman Hodulák <hodulakr@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT"
+description = "A client library for BaseX XQuery databases."
+repository = "https://github.com/RomanHodulak/basex_client"
+readme = "README.md"
+categories = ["database"]
+keywords = ["database", "basex", "xml", "xquery", "xpath"]
 
 [dependencies]
 md5 = "0.6.1"
+
+[dev-dependencies]
 matches = "0.1.8"
 rust-embed = "5.9.0"

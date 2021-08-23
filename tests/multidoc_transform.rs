@@ -1,7 +1,7 @@
 mod common;
 
-use basex_client;
-use basex_client::Client;
+use basex;
+use basex::Client;
 use common::Asset;
 
 #[test]

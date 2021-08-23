@@ -1,9 +1,9 @@
-# BaseX Client
-A library for connecting and querying a BaseX databases for XQuery. Compatible with 8.x, 9.x+.
+# BaseX
+A client library for BaseX databases. Compatible with 8.x, 9.x+.
 
 ## Usage
 ```rust
-use basex_client::Client;
+use basex::Client;
 
 fn main() {
     let mut client = Client::connect("localhost", 1984, "admin", "admin").unwrap();
