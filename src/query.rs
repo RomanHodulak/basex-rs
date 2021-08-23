@@ -5,7 +5,6 @@ use crate::{Result, Connection, DatabaseStream};
 pub enum Command {
     Close = 2,
     Bind = 3,
-    Results = 4,
     Execute = 5,
     Info = 6,
     Options = 7,
@@ -81,7 +80,7 @@ mod tests {
             let connection = Connection::new(stream);
 
             let mut query = Query::new("test".to_owned(), connection);
-            query.bind("foo", Some("aaa"), Some("integer"));
+            let _ = query.bind("foo", Some("aaa"), Some("integer"));
 
             query.into_inner().into_inner()
         };

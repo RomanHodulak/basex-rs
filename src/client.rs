@@ -88,12 +88,3 @@ impl<T> Client<T> where T: DatabaseStream {
         Ok(Query::new(id, self.connection.try_clone()?))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-    }
-}

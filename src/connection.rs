@@ -91,10 +91,6 @@ impl<T> Connection<T> where T: DatabaseStream {
             stream: self.stream.try_clone()?,
         })
     }
-
-    pub(crate) fn into_inner(self) -> T {
-        self.stream
-    }
 }
 
 #[cfg(test)]
@@ -102,6 +98,12 @@ mod tests {
     use super::*;
     use crate::tests::MockStream;
     use std::io::{Write, Read};
+
+    impl<T> Connection<T> where T: DatabaseStream {
+        pub(crate) fn into_inner(self) -> T {
+            self.stream
+        }
+    }
 
     #[test]
     fn test_connection_sends_command_with_arguments() {
@@ -112,7 +114,7 @@ mod tests {
         let argument_foo = "foo";
         let argument_bar = "bar";
 
-        connection.send_cmd(1, vec![Some(argument_foo), Some(argument_bar)]);
+        let _ = connection.send_cmd(1, vec![Some(argument_foo), Some(argument_bar)]);
         let actual_buffer = connection.into_inner().to_string();
         let expected_buffer = "\u{1}foo\u{0}bar\u{0}".to_owned();
 
@@ -124,13 +126,13 @@ mod tests {
         struct FailingStream;
 
         impl Read for FailingStream {
-            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
                 unimplemented!()
             }
         }
 
         impl Write for FailingStream {
-            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
                 Err(std::io::Error::new(std::io::ErrorKind::Other, ""))
             }
 
@@ -146,11 +148,11 @@ mod tests {
         }
 
         let mut connection = Connection::new(FailingStream);
-
         let result = connection.send_cmd(1, vec![]);
-        let actual_error = result.err().expect("Operation must fail");
+
+        let _actual_error = result.err().expect("Operation must fail");
         let expected_error = ClientError::Io(std::io::Error::new(std::io::ErrorKind::Other, ""));
 
-        assert!(matches!(expected_error, actual_error));
+        assert!(matches!(expected_error, _actual_error));
     }
 }

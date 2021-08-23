@@ -3,6 +3,7 @@ mod connection;
 mod errors;
 mod query;
 mod stream;
+#[cfg(test)]
 mod tests;
 
 pub use client::Client;
