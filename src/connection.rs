@@ -65,6 +65,12 @@ impl<T> Connection<T> where T: DatabaseStream {
         Ok(self)
     }
 
+    pub(crate) fn send_empty_arg(&mut self) -> Result<&mut Self> {
+        self.stream.write(&[0])?;
+
+        Ok(self)
+    }
+
     /// Gets response string, and returns string if command was successful. Returns `CommandFailed`
     /// error with a message otherwise.
     pub(crate) fn get_response(&mut self) -> Result<String> {
@@ -91,6 +97,20 @@ impl<T> Connection<T> where T: DatabaseStream {
         Ok(Self {
             stream: self.stream.try_clone()?,
         })
+    }
+}
+
+impl<T> Read for Connection<T> where T: DatabaseStream {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let len = self.stream.read(buf)?;
+
+        if let Some(last_byte) = buf.last() {
+            if *last_byte == 0 {
+                return Ok(0);
+            }
+        }
+
+        Ok(len)
     }
 }
 

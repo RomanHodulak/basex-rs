@@ -8,15 +8,15 @@ use common::Asset;
 fn test_query_combines_2_documents() {
     let mut client = Client::connect("localhost", 1984, "admin", "admin").unwrap();
 
-    let info = client.create::<&[u8]>("lambada", None).unwrap();
+    let info = client.create("lambada").unwrap().without_input().unwrap();
     assert!(info.starts_with("Database 'lambada' created"));
 
     let test_xml = Asset::get("sleeping.xml").unwrap();
-    let info = client.add("sleeping", Some(test_xml.as_ref())).unwrap();
+    let info = client.add("sleeping", test_xml.as_ref()).unwrap();
     assert!(info.starts_with("Resource(s) added"));
 
     let test_xml = Asset::get("powder.xml").unwrap();
-    let info = client.add("powder", Some(test_xml.as_ref())).unwrap();
+    let info = client.add("powder", test_xml.as_ref()).unwrap();
     assert!(info.starts_with("Resource(s) added"));
 
     let xquery = Asset::get("harvester.xq").unwrap();
