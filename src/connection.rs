@@ -1,4 +1,5 @@
 use crate::{ClientError, DatabaseStream, Result};
+use std::io::{ Read, copy };
 
 pub struct Connection<T> where T: DatabaseStream {
     stream: T,
@@ -48,18 +49,18 @@ impl<T> Connection<T> where T: DatabaseStream {
         Ok(String::from_utf8(raw_string)?)
     }
 
-    /// Sends command identified by the code and supplies the given arguments.
-    pub(crate) fn send_cmd(&mut self, code: u8, arguments: Vec<Option<&str>>) -> Result<&Self> {
-        let mut data: Vec<u8> = vec![code];
+    pub(crate) fn send_cmd(&mut self, code: u8) -> Result<&mut Self> {
+        self.stream.write(&[code])?;
 
-        for argument in arguments {
-            if argument.is_some() {
-                data.extend_from_slice(argument.unwrap().as_bytes());
-            }
-            data.push(0);
+        Ok(self)
+    }
+
+    pub(crate) fn send_arg<R: Read>(&mut self, argument: Option<R>) -> Result<&mut Self> {
+        if let Some(mut argument) = argument {
+            copy(&mut argument, &mut self.stream)?;
         }
 
-        self.stream.write(&data)?;
+        self.stream.write(&[0])?;
 
         Ok(self)
     }
@@ -114,7 +115,9 @@ mod tests {
         let argument_foo = "foo";
         let argument_bar = "bar";
 
-        let _ = connection.send_cmd(1, vec![Some(argument_foo), Some(argument_bar)]);
+        let _ = connection.send_cmd(1).unwrap()
+            .send_arg(Some(argument_foo.as_bytes())).unwrap()
+            .send_arg(Some(argument_bar.as_bytes())).unwrap();
         let actual_buffer = connection.into_inner().to_string();
         let expected_buffer = "\u{1}foo\u{0}bar\u{0}".to_owned();
 
@@ -148,7 +151,7 @@ mod tests {
         }
 
         let mut connection = Connection::new(FailingStream);
-        let result = connection.send_cmd(1, vec![]);
+        let result = connection.send_cmd(1);
 
         let _actual_error = result.err().expect("Operation must fail");
         let expected_error = ClientError::Io(std::io::Error::new(std::io::ErrorKind::Other, ""));

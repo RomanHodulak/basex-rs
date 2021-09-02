@@ -1,5 +1,6 @@
 use crate::{Result, Connection, Query, DatabaseStream};
 use std::net::TcpStream;
+use std::io::Read;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 pub enum Command {
@@ -44,16 +45,20 @@ impl<T> Client<T> where T: DatabaseStream {
     /// XML documents, a remote URL, or a string containing XML.
     /// *  `name` must be a [valid database name](http://docs.basex.org/wiki/Commands#Valid_Names)
     /// *  database creation can be controlled by setting [Create Options](http://docs.basex.org/wiki/Options#Create_Options)
-    pub fn create(&mut self, name: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Command::Create as u8, vec![Some(name), input])?;
+    pub fn create<R: Read>(&mut self, name: &str, input: Option<R>) -> Result<String> {
+        self.connection.send_cmd(Command::Create as u8)?;
+        self.connection.send_arg(Some(name.as_bytes()))?;
+        self.connection.send_arg(input)?;
         self.connection.get_response()
     }
 
     /// Replaces resources in the currently opened database, addressed by path, with the file,
     /// directory or XML string specified by input, or adds new documents if no resource exists at
     /// the specified path.
-    pub fn replace(&mut self, path: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Command::Replace as u8, vec![Some(path), input])?;
+    pub fn replace<R: Read>(&mut self, path: &str, input: Option<R>) -> Result<String> {
+        self.connection.send_cmd(Command::Replace as u8)?;
+        self.connection.send_arg(Some(path.as_bytes()))?;
+        self.connection.send_arg(input)?;
         self.connection.get_response()
     }
 
@@ -62,8 +67,10 @@ impl<T> Client<T> where T: DatabaseStream {
     /// *  The input may either be a file reference, a remote URL, or a plain string.
     /// *  If the path denotes a directory, it needs to be suffixed with a slash (/).
     /// *  An existing resource will be replaced.
-    pub fn store(&mut self, path: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Command::Store as u8, vec![Some(path), input])?;
+    pub fn store<R: Read>(&mut self, path: &str, input: Option<R>) -> Result<String> {
+        self.connection.send_cmd(Command::Store as u8)?;
+        self.connection.send_arg(Some(path.as_bytes()))?;
+        self.connection.send_arg(input)?;
         self.connection.get_response()
     }
 
@@ -75,14 +82,17 @@ impl<T> Client<T> where T: DatabaseStream {
     /// `replace` command can be used.
     /// *  If a file is too large to be added in one go, its data structures will be cached to disk
     /// first. Caching can be enforced by turning the ADDCACHE option on.
-    pub fn add(&mut self, path: &str, input: Option<&str>) -> Result<String> {
-        self.connection.send_cmd(Command::Add as u8, vec![Some(path), input])?;
+    pub fn add<R: Read>(&mut self, path: &str, input: Option<R>) -> Result<String> {
+        self.connection.send_cmd(Command::Add as u8)?;
+        self.connection.send_arg(Some(path.as_bytes()))?;
+        self.connection.send_arg(input)?;
         self.connection.get_response()
     }
 
     /// Creates new query instance from given XQuery string.
-    pub fn query(&mut self, query: &str) -> Result<Query<T>> {
-        self.connection.send_cmd(Command::Query as u8, vec![Some(query)])?;
+    pub fn query<R: Read>(&mut self, query: R) -> Result<Query<T>> {
+        self.connection.send_cmd(Command::Query as u8)?;
+        self.connection.send_arg(Some(query))?;
         let id = self.connection.get_response()?;
 
         Ok(Query::new(id, self.connection.try_clone()?))
