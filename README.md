@@ -1,4 +1,9 @@
 # BaseX
+
+[![Build Status](https://github.com/RomanHodulak/basex-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/RomanHodulak/basex-rs/actions)
+[![Code Coverage](https://codecov.io/gh/RomanHodulak/basex-rs/branch/master/graph/badge.svg?token=GDG9C63SNE)](https://codecov.io/gh/RomanHodulak/basex-rs)
+[![Current Crates.io Version](https://img.shields.io/crates/v/basex.svg)](https://crates.io/crates/basex)
+
 A client library for BaseX databases. Compatible with 8.x, 9.x+.
 
 ## Usage
