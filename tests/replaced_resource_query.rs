@@ -14,14 +14,14 @@ fn test_executing_query_on_db_with_replaced_resource() {
     assert!(info.starts_with("Database 'lambada' created"), "Actual info: {}", info);
 
     let test_xml = Asset::get("powder.xml").unwrap();
-    let info = client.add("sleeping", test_xml.as_ref()).unwrap();
+    let info = client.add("sleeping", &mut test_xml.as_ref()).unwrap();
     assert!(info.starts_with("Resource(s) added"), "Actual info: {}", info);
 
     let test_xml = Asset::get("sleeping.xml").unwrap();
-    let info = client.replace("sleeping", test_xml.as_ref()).unwrap();
+    let info = client.replace("sleeping", &mut test_xml.as_ref()).unwrap();
     assert!(info.starts_with("1 resource(s) replaced"), "Actual info: {}", info);
 
-    let mut query = client.query("count(//artikl)".as_bytes()).unwrap();
+    let mut query = client.query(&mut "count(//artikl)".as_bytes()).unwrap();
     let result = query.execute().unwrap();
     assert_eq!(result, "3");
 

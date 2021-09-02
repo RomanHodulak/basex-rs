@@ -25,51 +25,63 @@ impl<T> Query<T> where T: DatabaseStream {
 
     pub fn close(&mut self) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Close as u8)?;
-        self.connection.send_arg(Some(self.id.as_bytes()))?;
+        self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()?;
         Ok(self)
     }
 
     pub fn bind(&mut self, name: &str, value: Option<&str>, value_type: Option<&str>) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Bind as u8)?;
-        self.connection.send_arg(Some(self.id.as_bytes()))?;
-        self.connection.send_arg(Some(name.as_bytes()))?;
-        self.connection.send_arg(value.map(|v| v.as_bytes()))?;
-        self.connection.send_arg(value_type.map(|v| v.as_bytes()))?;
+        self.connection.send_arg(&mut self.id.as_bytes())?;
+        self.connection.send_arg(&mut name.as_bytes())?;
+        match value {
+            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
+            None => self.connection.skip_arg(),
+        };
+        match value_type {
+            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
+            None => self.connection.skip_arg(),
+        };
         self.connection.get_response()?;
         Ok(self)
     }
 
     pub fn execute(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Execute as u8)?;
-        self.connection.send_arg(Some(self.id.as_bytes()))?;
+        self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
 
     pub fn info(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Info as u8)?;
-        self.connection.send_arg(Some(self.id.as_bytes()))?;
+        self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
 
     pub fn options(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Options as u8)?;
-        self.connection.send_arg(Some(self.id.as_bytes()))?;
+        self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
 
     pub fn context(&mut self, value: Option<&str>, value_type: Option<&str>) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Context as u8)?;
-        self.connection.send_arg(Some(self.id.as_bytes()))?;
-        self.connection.send_arg(value.map(|v| v.as_bytes()))?;
-        self.connection.send_arg(value_type.map(|v| v.as_bytes()))?;
+        self.connection.send_arg(&mut self.id.as_bytes())?;
+        match value {
+            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
+            None => self.connection.skip_arg(),
+        };
+        match value_type {
+            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
+            None => self.connection.skip_arg(),
+        };
         self.connection.get_response()?;
         Ok(self)
     }
 
     pub fn updating(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Updating as u8)?;
-        self.connection.send_arg(Some(self.id.as_bytes()))?;
+        self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
 

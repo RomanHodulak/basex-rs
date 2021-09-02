@@ -20,13 +20,13 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
         Self { client }
     }
 
-    pub fn with_input<R: Read>(mut self, input: R) -> Result<String> {
-        self.client.connection.send_arg(Some(input))?;
+    pub fn with_input<R: Read>(mut self, input: &mut R) -> Result<String> {
+        self.client.connection.send_arg(input)?;
         self.client.connection.get_response()
     }
 
     pub fn without_input(mut self) -> Result<String> {
-        self.client.connection.send_arg::<&[u8]>(None)?;
+        self.client.connection.skip_arg()?;
         self.client.connection.get_response()
     }
 }
@@ -66,17 +66,17 @@ impl<T> Client<T> where T: DatabaseStream {
     /// *  database creation can be controlled by setting [Create Options](http://docs.basex.org/wiki/Options#Create_Options)
     pub fn create(&mut self, name: &str) -> Result<CommandWithOptionalInput<T>> {
         self.connection.send_cmd(Command::Create as u8)?;
-        self.connection.send_arg(Some(name.as_bytes()))?;
+        self.connection.send_arg(&mut name.as_bytes())?;
         Ok(CommandWithOptionalInput::new(self))
     }
 
     /// Replaces resources in the currently opened database, addressed by path, with the file,
     /// directory or XML string specified by input, or adds new documents if no resource exists at
     /// the specified path.
-    pub fn replace<R: Read>(&mut self, path: &str, input: R) -> Result<String> {
+    pub fn replace<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
         self.connection.send_cmd(Command::Replace as u8)?;
-        self.connection.send_arg(Some(path.as_bytes()))?;
-        self.connection.send_arg(Some(input))?;
+        self.connection.send_arg(&mut path.as_bytes())?;
+        self.connection.send_arg(input)?;
         self.connection.get_response()
     }
 
@@ -85,10 +85,10 @@ impl<T> Client<T> where T: DatabaseStream {
     /// *  The input may either be a file reference, a remote URL, or a plain string.
     /// *  If the path denotes a directory, it needs to be suffixed with a slash (/).
     /// *  An existing resource will be replaced.
-    pub fn store<R: Read>(&mut self, path: &str, input: R) -> Result<String> {
+    pub fn store<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
         self.connection.send_cmd(Command::Store as u8)?;
-        self.connection.send_arg(Some(path.as_bytes()))?;
-        self.connection.send_arg(Some(input))?;
+        self.connection.send_arg(&mut path.as_bytes())?;
+        self.connection.send_arg(input)?;
         self.connection.get_response()
     }
 
@@ -100,17 +100,17 @@ impl<T> Client<T> where T: DatabaseStream {
     /// `replace` command can be used.
     /// *  If a file is too large to be added in one go, its data structures will be cached to disk
     /// first. Caching can be enforced by turning the ADDCACHE option on.
-    pub fn add<R: Read>(&mut self, path: &str, input: R) -> Result<String> {
+    pub fn add<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
         self.connection.send_cmd(Command::Add as u8)?;
-        self.connection.send_arg(Some(path.as_bytes()))?;
-        self.connection.send_arg(Some(input))?;
+        self.connection.send_arg(&mut path.as_bytes())?;
+        self.connection.send_arg(input)?;
         self.connection.get_response()
     }
 
     /// Creates new query instance from given XQuery string.
-    pub fn query<R: Read>(&mut self, query: R) -> Result<Query<T>> {
+    pub fn query<R: Read>(&mut self, query: &mut R) -> Result<Query<T>> {
         self.connection.send_cmd(Command::Query as u8)?;
-        self.connection.send_arg(Some(query))?;
+        self.connection.send_arg(query)?;
         let id = self.connection.get_response()?;
 
         Ok(Query::new(id, self.connection.try_clone()?))
@@ -128,7 +128,7 @@ mod tests {
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
         let info = client.create("boy_sminem").unwrap()
-            .with_input("<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+            .with_input(&mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
 
         assert_eq!(stream.to_string(), "\u{8}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
         assert_eq!("test", info);
