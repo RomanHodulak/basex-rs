@@ -35,12 +35,12 @@ impl<T> Query<T> where T: DatabaseStream {
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.send_arg(&mut name.as_bytes())?;
         match value {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
-            None => self.connection.skip_arg(),
+            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
+            None => self.connection.skip_arg()?,
         };
         match value_type {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
-            None => self.connection.skip_arg(),
+            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
+            None => self.connection.skip_arg()?,
         };
         self.connection.get_response()?;
         Ok(self)
@@ -68,12 +68,12 @@ impl<T> Query<T> where T: DatabaseStream {
         self.connection.send_cmd(Command::Context as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
         match value {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
-            None => self.connection.skip_arg(),
+            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
+            None => self.connection.skip_arg()?,
         };
         match value_type {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes()),
-            None => self.connection.skip_arg(),
+            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
+            None => self.connection.skip_arg()?,
         };
         self.connection.get_response()?;
         Ok(self)

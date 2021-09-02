@@ -20,12 +20,12 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
         Self { client }
     }
 
-    pub fn with_input<R: Read>(mut self, input: &mut R) -> Result<String> {
+    pub fn with_input<R: Read>(self, input: &mut R) -> Result<String> {
         self.client.connection.send_arg(input)?;
         self.client.connection.get_response()
     }
 
-    pub fn without_input(mut self) -> Result<String> {
+    pub fn without_input(self) -> Result<String> {
         self.client.connection.skip_arg()?;
         self.client.connection.get_response()
     }

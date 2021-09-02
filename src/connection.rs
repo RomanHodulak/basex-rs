@@ -98,11 +98,15 @@ impl<T> Connection<T> where T: DatabaseStream {
 
 impl<T> Read for Connection<T> where T: DatabaseStream {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
+
         let len = self.stream.read(buf)?;
 
         if let Some(last_byte) = buf.last() {
             if *last_byte == 0 {
-                return Ok(0);
+                return Ok(if len > 0 { len - 1 } else { 0 });
             }
         }
 
@@ -113,8 +117,8 @@ impl<T> Read for Connection<T> where T: DatabaseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::MockStream;
-    use std::io::{Write, Read};
+    use crate::tests::{MockStream, FailingStream};
+    use std::io::Read;
 
     impl<T> Connection<T> where T: DatabaseStream {
         pub(crate) fn into_inner(self) -> T {
@@ -142,30 +146,6 @@ mod tests {
 
     #[test]
     fn test_connection_fails_to_send_command_with_failing_stream() {
-        struct FailingStream;
-
-        impl Read for FailingStream {
-            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
-                unimplemented!()
-            }
-        }
-
-        impl Write for FailingStream {
-            fn write(&mut self, _buf: &[u8]) -> std::io::Result<usize> {
-                Err(std::io::Error::new(std::io::ErrorKind::Other, ""))
-            }
-
-            fn flush(&mut self) -> std::io::Result<()> {
-                unimplemented!()
-            }
-        }
-
-        impl DatabaseStream for FailingStream {
-            fn try_clone(&mut self) -> Result<Self> {
-                unimplemented!()
-            }
-        }
-
         let mut connection = Connection::new(FailingStream);
         let result = connection.send_cmd(1);
 
@@ -173,5 +153,109 @@ mod tests {
         let expected_error = ClientError::Io(std::io::Error::new(std::io::ErrorKind::Other, ""));
 
         assert!(matches!(expected_error, _actual_error));
+    }
+
+    #[test]
+    fn test_cloning_points_to_same_stream() {
+        let expected_response = "test_response";
+        let stream = MockStream::new(expected_response.to_owned());
+        let mut connection = Connection::new(stream);
+
+        let mut cloned_connection = connection.try_clone().unwrap();
+        let _ = cloned_connection.send_arg(&mut "bar".as_bytes()).unwrap()
+            .skip_arg().unwrap();
+
+        let actual_buffer = connection.into_inner().to_string();
+        let actual_cloned_buffer = cloned_connection.into_inner().to_string();
+
+        assert_eq!(actual_buffer, actual_cloned_buffer);
+    }
+
+    #[test]
+    fn test_connection_gets_response() {
+        let expected_response = "test_response";
+        let stream = MockStream::new(expected_response.to_owned());
+        let mut connection = Connection::new(stream);
+        let actual_response = connection.get_response().unwrap();
+
+        assert_eq!(expected_response, actual_response);
+    }
+
+    #[test]
+    fn test_connection_gets_response_on_failed_command() {
+        let expected_response = "test_error\0\u{1}";
+        let stream = MockStream::new(expected_response.to_owned());
+        let mut connection = Connection::new(stream);
+        let actual_error = connection.get_response().expect_err("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::CommandFailed{ message } if message == "test_error"));
+    }
+
+    #[test]
+    fn test_connection_fails_to_get_response_with_failing_stream() {
+        let mut connection = Connection::new(FailingStream);
+        let actual_error = connection.get_response().expect_err("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::Io(_)));
+    }
+
+    #[test]
+    fn test_authentication_succeeds_with_correct_auth_string() {
+        let expected_auth_string = "admin\0af13b20af0e0b0e3517a406c42622d3d\0";
+        let stream = MockStream::new("BaseX:19501915960728\0".to_owned());
+        let mut connection = Connection::new(stream);
+
+        let _ = connection.authenticate("admin", "admin").unwrap();
+
+        let actual_auth_string = connection.into_inner().to_string();
+
+        assert_eq!(expected_auth_string, actual_auth_string);
+    }
+
+    #[test]
+    fn test_authentication_fails_on_error_response() {
+        let stream = MockStream::new("BaseX:19501915960728\0\u{1}".to_owned());
+        let mut connection = Connection::new(stream);
+
+        let actual_error = connection.authenticate("admin", "admin")
+            .err().expect("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::Auth));
+    }
+
+    #[test]
+    fn test_read_string_from_connection() {
+        let expected_string = "test_string";
+        let stream = MockStream::new(expected_string.to_owned());
+        let mut connection = Connection::new(stream);
+
+        let mut actual_string = String::new();
+        let _ = connection.read_to_string(&mut actual_string).unwrap();
+
+        assert_eq!(expected_string, &actual_string);
+    }
+
+    #[test]
+    fn test_read_byte_into_empty_buffer_from_connection() {
+        let expected_bytes: Vec<u8> = vec![];
+        let stream = MockStream::new("test_string".to_owned());
+        let mut connection = Connection::new(stream);
+
+        let mut actual_bytes = vec![];
+        let _ = connection.read(&mut actual_bytes).unwrap();
+
+        assert_eq!(expected_bytes, actual_bytes);
+    }
+
+    #[test]
+    fn test_read_single_byte_from_connection() {
+        let expected_bytes = "t".as_bytes();
+        let stream = MockStream::new("test_string".to_owned());
+        let mut connection = Connection::new(stream);
+
+        let mut actual_bytes = vec![0];
+        let _ = connection.read(&mut actual_bytes).unwrap();
+
+        assert_eq!(expected_bytes, actual_bytes);
     }
 }

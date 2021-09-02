@@ -3,13 +3,12 @@ mod common;
 use basex;
 use basex::Client;
 use common::Asset;
-use std::io::Read;
 
 #[test]
 fn test_executing_query_with_2_files() {
     let mut client = Client::connect("localhost", 1984, "admin", "admin").unwrap();
 
-    let mut info = client.create("lambada").unwrap().without_input().unwrap();
+    let info = client.create("lambada").unwrap().without_input().unwrap();
 
     assert!(info.starts_with("Database 'lambada' created"));
 

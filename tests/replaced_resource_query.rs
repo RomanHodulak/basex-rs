@@ -3,7 +3,6 @@ mod common;
 use basex;
 use basex::Client;
 use common::Asset;
-use std::io::Read;
 
 #[test]
 fn test_executing_query_on_db_with_replaced_resource() {
