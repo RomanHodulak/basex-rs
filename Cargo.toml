@@ -16,3 +16,4 @@ md5 = "0.6.1"
 [dev-dependencies]
 matches = "0.1.8"
 rust-embed = "5.9.0"
+circbuf = "0.2.0"

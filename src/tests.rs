@@ -1,16 +1,21 @@
 use super::*;
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::io::{Read, Write};
+use std::io::{Read, Write, copy};
+use circbuf::CircBuf;
 
 pub(crate) struct MockStream {
     buffer: Rc<RefCell<Vec<u8>>>,
-    response: String,
+    response: CircBuf,
 }
 
 impl MockStream {
     pub(crate) fn new(response: String) -> Self {
-        Self { buffer: Rc::new(RefCell::new(vec![])), response }
+        let mut buffer = CircBuf::with_capacity(response.len() + 1).unwrap();
+        buffer.write_all(response.as_bytes());
+        buffer.write(&[0]);
+
+        Self { buffer: Rc::new(RefCell::new(vec![])), response: buffer }
     }
 }
 
@@ -22,10 +27,7 @@ impl ToString for MockStream {
 
 impl Read for MockStream {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let size = self.response.as_bytes().len();
-        (&mut *buf).write_all(self.response.as_bytes())?;
-        (&mut *buf).write(&[0 as u8])?;
-        Ok(size)
+        self.response.read(buf)
     }
 }
 
@@ -43,9 +45,12 @@ impl Write for MockStream {
 
 impl DatabaseStream for MockStream {
     fn try_clone(&mut self) -> Result<Self> {
+        let mut cloned_buff = CircBuf::with_capacity(self.response.len()).unwrap();
+        copy(&mut self.response, &mut cloned_buff);
+
         Ok(MockStream {
             buffer: Rc::clone(&self.buffer),
-            response: self.response.clone()
+            response: cloned_buff,
         })
     }
 }
