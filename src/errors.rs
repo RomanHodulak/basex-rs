@@ -34,3 +34,57 @@ impl From<FromUtf8Error> for ClientError {
         ClientError::Utf8Parse(err)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::ErrorKind;
+
+    #[test]
+    fn test_io_error_formats_as_debug() {
+        let error = ClientError::Io(Error::new(ErrorKind::Other, "test"));
+        let _ = format!("{:?}", error);
+    }
+
+    #[test]
+    fn test_io_error_formats_as_empty() {
+        let error = ClientError::Io(Error::new(ErrorKind::Other, "test"));
+        let _ = format!("{}", error);
+    }
+
+    #[test]
+    fn test_utf8_parse_formats_as_debug() {
+        let error = ClientError::Utf8Parse(String::from_utf8(vec![0xa0 as u8, 0xa1]).unwrap_err());
+        let _ = format!("{:?}", error);
+    }
+
+    #[test]
+    fn test_utf8_parse_formats_as_empty() {
+        let error = ClientError::Utf8Parse(String::from_utf8(vec![0xa0 as u8, 0xa1]).unwrap_err());
+        let _ = format!("{}", error);
+    }
+
+    #[test]
+    fn test_auth_formats_as_debug() {
+        let error = ClientError::Auth;
+        let _ = format!("{:?}", error);
+    }
+
+    #[test]
+    fn test_auth_formats_as_empty() {
+        let error = ClientError::Auth;
+        let _ = format!("{}", error);
+    }
+
+    #[test]
+    fn test_command_failed_formats_as_debug() {
+        let error = ClientError::CommandFailed { message: "error".to_owned() };
+        let _ = format!("{:?}", error);
+    }
+
+    #[test]
+    fn test_command_failed_formats_as_empty() {
+        let error = ClientError::CommandFailed { message: "error".to_owned() };
+        let _ = format!("{}", error);
+    }
+}
