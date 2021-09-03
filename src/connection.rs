@@ -149,10 +149,9 @@ mod tests {
         let mut connection = Connection::new(FailingStream);
         let result = connection.send_cmd(1);
 
-        let _actual_error = result.err().expect("Operation must fail");
-        let expected_error = ClientError::Io(std::io::Error::new(std::io::ErrorKind::Other, ""));
+        let actual_error = result.err().expect("Operation must fail");
 
-        assert!(matches!(expected_error, _actual_error));
+        assert!(matches!(actual_error, ClientError::Io(_)));
     }
 
     #[test]
