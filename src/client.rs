@@ -120,7 +120,8 @@ impl<T> Client<T> where T: DatabaseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::MockStream;
+    use crate::tests::{MockStream, FailingStream};
+    use crate::ClientError;
 
     #[test]
     fn test_database_is_created_with_input() {
@@ -144,5 +145,78 @@ mod tests {
 
         assert_eq!(stream.to_string(), "\u{8}boy_sminem\u{0}\u{0}".to_owned());
         assert_eq!("test", info);
+    }
+
+    #[test]
+    fn test_database_fails_to_create_with_failing_stream() {
+        let mut client = Client::new(Connection::new(FailingStream));
+
+        let actual_error = client.create("boy_sminem")
+            .err().expect("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::Io(_)));
+    }
+
+    #[test]
+    fn test_resource_is_replaced() {
+        let mut stream = MockStream::new("test".to_owned());
+        let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
+
+        let info = client.replace("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+
+        assert_eq!(stream.to_string(), "\u{c}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
+        assert_eq!("test", info);
+    }
+
+    #[test]
+    fn test_resource_fails_to_replace_with_failing_stream() {
+        let mut client = Client::new(Connection::new(FailingStream));
+
+        let actual_error = client.replace("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes())
+            .expect_err("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::Io(_)));
+    }
+
+    #[test]
+    fn test_resource_is_stored() {
+        let mut stream = MockStream::new("test".to_owned());
+        let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
+
+        let info = client.store("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+
+        assert_eq!(stream.to_string(), "\u{d}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
+        assert_eq!("test", info);
+    }
+
+    #[test]
+    fn test_resource_fails_to_store_with_failing_stream() {
+        let mut client = Client::new(Connection::new(FailingStream));
+
+        let actual_error = client.store("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes())
+            .expect_err("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::Io(_)));
+    }
+
+    #[test]
+    fn test_resource_is_added() {
+        let mut stream = MockStream::new("test".to_owned());
+        let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
+
+        let info = client.add("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+
+        assert_eq!(stream.to_string(), "\u{9}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
+        assert_eq!("test", info);
+    }
+
+    #[test]
+    fn test_resource_fails_to_add_with_failing_stream() {
+        let mut client = Client::new(Connection::new(FailingStream));
+
+        let actual_error = client.add("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes())
+            .expect_err("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::Io(_)));
     }
 }
