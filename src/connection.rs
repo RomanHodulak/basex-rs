@@ -198,6 +198,16 @@ mod tests {
     }
 
     #[test]
+    fn test_connection_fails_to_get_response_with_malformed_utf_8_string() {
+        let non_utf8_sequence = &[0xa0 as u8, 0xa1];
+        let stream = MockStream::from_bytes(non_utf8_sequence);
+        let mut connection = Connection::new(stream);
+        let actual_error = connection.get_response().expect_err("Operation must fail");
+
+        assert!(matches!(actual_error, ClientError::Utf8Parse(_)), "actual: {} {:?}", actual_error, actual_error);
+    }
+
+    #[test]
     fn test_authentication_succeeds_with_correct_auth_string() {
         let expected_auth_string = "admin\0af13b20af0e0b0e3517a406c42622d3d\0";
         let stream = MockStream::new("BaseX:19501915960728\0".to_owned());

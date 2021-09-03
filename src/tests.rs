@@ -10,12 +10,16 @@ pub(crate) struct MockStream {
 }
 
 impl MockStream {
-    pub(crate) fn new(response: String) -> Self {
+    pub(crate) fn from_bytes(response: &[u8]) -> Self {
         let mut buffer = CircBuf::with_capacity(response.len() + 1).unwrap();
-        buffer.write_all(response.as_bytes()).unwrap();
+        buffer.write_all(response).unwrap();
         buffer.write(&[0]).unwrap();
 
         Self { buffer: Rc::new(RefCell::new(vec![])), response: buffer }
+    }
+
+    pub(crate) fn new(response: String) -> Self {
+        Self::from_bytes(response.as_bytes())
     }
 }
 
