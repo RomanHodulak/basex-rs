@@ -11,7 +11,7 @@ impl<T> Connection<T> where T: DatabaseStream {
         Self { stream }
     }
 
-    pub(crate) fn authenticate(&mut self, user: &str, password: &str) -> Result<&Self> {
+    pub fn authenticate(&mut self, user: &str, password: &str) -> Result<&Self> {
         let response = self.read_string()?;
 
         let challenge: Vec<&str> = response.split(":").collect();
