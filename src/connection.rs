@@ -140,7 +140,7 @@ mod tests {
         let actual_buffer = connection.into_inner().to_string();
         let expected_buffer = "\u{1}foo\u{0}bar\u{0}".to_owned();
 
-        assert_eq!(expected_buffer, actual_buffer, "Connection properly sends command with arguments {} and {}", argument_foo, argument_bar);
+        assert_eq!(expected_buffer, actual_buffer);
     }
 
     #[test]
@@ -204,7 +204,7 @@ mod tests {
         let mut connection = Connection::new(stream);
         let actual_error = connection.get_response().expect_err("Operation must fail");
 
-        assert!(matches!(actual_error, ClientError::Utf8Parse(_)), "actual: {} {:?}", actual_error, actual_error);
+        assert!(matches!(actual_error, ClientError::Utf8Parse(_)));
     }
 
     #[test]
