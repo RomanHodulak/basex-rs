@@ -103,11 +103,10 @@ impl<T> Read for Connection<T> where T: DatabaseStream {
         }
 
         let len = self.stream.read(buf)?;
+        let last_byte = buf.last().unwrap();
 
-        if let Some(last_byte) = buf.last() {
-            if *last_byte == 0 {
-                return Ok(if len > 0 { len - 1 } else { 0 });
-            }
+        if *last_byte == 0 {
+            return Ok(if len > 0 { len - 1 } else { 0 });
         }
 
         Ok(len)
