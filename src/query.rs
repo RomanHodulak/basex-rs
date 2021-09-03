@@ -1,8 +1,7 @@
 use crate::{Result, Connection, DatabaseStream};
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
-#[derive(Debug)]
-pub enum Command {
+enum Command {
     Close = 2,
     Bind = 3,
     Execute = 5,
@@ -84,16 +83,18 @@ impl<T> Query<T> where T: DatabaseStream {
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
-
-    pub fn into_inner(self) -> Connection<T> {
-        self.connection
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::tests::MockStream;
+
+    impl<T> Query<T> where T: DatabaseStream {
+        pub(crate) fn into_inner(self) -> Connection<T> {
+            self.connection
+        }
+    }
 
     #[test]
     fn test_query_binds_arguments() {
