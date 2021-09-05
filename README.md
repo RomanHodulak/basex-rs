@@ -1,25 +1,83 @@
-# BaseX
+<div style="text-align: center">
+
+# ![BaseX Logo](https://basex.org/images/basex.svg "BaseX")
 
 [![Build Status](https://github.com/RomanHodulak/basex-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/RomanHodulak/basex-rs/actions)
 [![Code Coverage](https://codecov.io/gh/RomanHodulak/basex-rs/branch/master/graph/badge.svg?token=GDG9C63SNE)](https://codecov.io/gh/RomanHodulak/basex-rs)
 [![Current Crates.io Version](https://img.shields.io/crates/v/basex.svg)](https://crates.io/crates/basex)
 
-A client library for BaseX databases. Compatible with 8.x, 9.x+.
+</div>
+
+This library is a client implementation of the open-source XML database server and XQuery processor [BaseX](http://basex.org).
+
+Compatible with versions 8.x and 9.x.
+
+## Installation
+Add the library to the list of dependencies in your `Cargo.toml` like so:
+```toml
+[dependencies]
+basex = "0.2.0"
+```
 
 ## Usage
+
+### 1. Set up a database server
+First, you need to have BaseX server up and running. If you want to try it out, you can do it right away using docker.
+
+```shell
+docker run -p 1984:1984 basex/basexhttp:9.1.2
+```
+
+Every example can be run with this server configuration.
+
+### 2. Connect to the server
+Before you can do anything with the database server, you need to establish connection and authorize. Typically, you do this by calling `Client::connect`. If you get Ok result, you get the instance of the `Client`. Having its instance guarantees to have an open session with the server.
+
+```
+Client::connect("localhost", 1984, "admin", "admin")?
+```
+
+You can now send commands.
+
+### 3. Open database
+To run a query, you need to open a database. **Opening existing database is unsupported at this moment and will be available in version 0.3.**
+
+The only way to open database is to create it, which also opens it. You have to follow the create call with either `without_input` or `with_input` to optionally specify initial XML resource.
+
+```
+client.create("coolbase").with_input(&mut xml);
+```
+
+### 4. Run queries
+Aside from running commands, you can run queries using XQuery syntax which is the most important use-case.
+
+1. Create a new query using `Client::query`. This puts the session into query mode. 
+2. Optionally, bind arguments using `Query::bind`. 
+3. Execute it using `Query::execute`.
+4. Close the query using `Query::close`.
+
+## Example
+The following example creates database "lambada" with initial XML resource and counts all first-level child nodes of the `Root` node.
+
 ```rust
-use basex::Client;
+use basex::{Client, ClientError};
 
-fn main() {
-    let mut client = Client::connect("localhost", 1984, "admin", "admin").unwrap();
+fn main() -> Result<(), ClientError> {
+    let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    let mut xml = "<Root><Text></Text><Lala></Lala><Papa></Papa></Root>".as_bytes();
 
-    let info = client.create("lambada", Some("<None><Text></Text><Lala></Lala><Papa></Papa></None>")).unwrap();
+    let info = client.create("lambada")?.with_input(&mut xml)?;
     assert!(info.starts_with("Database 'lambada' created"));
 
-    let mut query = client.query("count(/None/*)").unwrap();
-    let result = query.execute().unwrap();
+    let mut xquery = "count(/Root/*)".as_bytes();
+    let mut query = client.query(&mut xquery)?;
+    let result = query.execute()?;
     assert_eq!(result, "3");
 
-    let _ = query.close().unwrap();
+    let _ = query.close()?;
+    Ok(())
 }
 ```
+
+## License
+The library is licensed under [ISC](LICENSE).
