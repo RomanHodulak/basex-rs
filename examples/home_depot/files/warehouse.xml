@@ -1,0 +1,27 @@
+<Katalog>
+  <Produkt>
+    <Kod>AH-01</Kod>
+    <Nazev lang="cs">Lopata</Nazev>
+    <Nazev lang="en">Shovel</Nazev>
+  </Produkt>
+  <Produkt>
+    <Kod>BE-02</Kod>
+    <Nazev lang="cs">Krumpáč</Nazev>
+    <Nazev lang="en">Pickaxe</Nazev>
+  </Produkt>
+  <Produkt>
+    <Kod>LP-03</Kod>
+    <Nazev lang="cs">Gramofon</Nazev>
+    <Nazev lang="en">Gramophone</Nazev>
+  </Produkt>
+  <Produkt>
+    <Kod>GG-04</Kod>
+    <Nazev lang="cs">Truhla</Nazev>
+    <Nazev lang="en">Chest</Nazev>
+  </Produkt>
+  <Produkt>
+    <Kod>NQ-05</Kod>
+    <Nazev lang="cs">Květináč</Nazev>
+    <Nazev lang="en">Flowerpot</Nazev>
+  </Produkt>
+</Katalog>

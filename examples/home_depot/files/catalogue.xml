@@ -1,0 +1,47 @@
+<stock>
+  <article>
+    <id>1</id>
+    <weight unit="kg">0.526</weight>
+    <packaging>
+      <width>160</width>
+      <height>170</height>
+      <depth>180</depth>
+    </packaging>
+  </article>
+  <article>
+    <id>2</id>
+    <weight unit="kg">6.799</weight>
+    <packaging>
+      <width>190</width>
+      <height>110</height>
+      <depth>160</depth>
+    </packaging>
+  </article>
+  <article>
+    <id>3</id>
+    <weight unit="kg">9.192</weight>
+    <packaging>
+      <width>80</width>
+      <height>40</height>
+      <depth>80</depth>
+    </packaging>
+  </article>
+  <article>
+    <id>4</id>
+    <weight unit="kg">7.084</weight>
+    <packaging>
+      <width>60</width>
+      <height>150</height>
+      <depth>120</depth>
+    </packaging>
+  </article>
+  <article>
+    <id>5</id>
+    <weight unit="kg">5.513</weight>
+    <packaging>
+      <width>80</width>
+      <height>70</height>
+      <depth>100</depth>
+    </packaging>
+  </article>
+</stock>
