@@ -9,14 +9,14 @@ macro_rules! path {
 
 fn main() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    let mut catalogue = File::open(path!("catalogue.xml"))?;
+    let mut catalog = File::open(path!("catalog.xml"))?;
     let mut warehouse = File::open(path!("warehouse.xml"))?;
     let mut xquery = File::open(path!("hornbach.xq"))?;
 
     let info = client.create("hornbach")?.without_input()?;
     assert!(info.starts_with("Database 'hornbach' created"));
 
-    let info = client.add("catalogue", &mut catalogue)?;
+    let info = client.add("catalog", &mut catalog)?;
     assert!(info.starts_with("Resource(s) added"));
 
     let info = client.add("warehouse", &mut warehouse)?;

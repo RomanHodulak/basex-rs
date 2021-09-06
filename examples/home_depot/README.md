@@ -1,6 +1,6 @@
 # Home Depot
 
-In this example we have two XML feeds. One is from **warehouse**, second one is from **catalogue**.
+In this example we have two XML feeds. One is from **warehouse**, second one is from **catalog**.
 
 Our goal is to combine these feeds together in a specified format. Problem is that the format and units are different.
 
@@ -18,9 +18,9 @@ Feed [`files/warehouse.xml`](files/warehouse.xml)  contains information about th
 | `packaging/height`  | cm   |
 | `packaging/depth`   | cm   |
 
-### Catalogue structure
+### Catalog structure
 
-Feed [`files/catalogue.xml`](files/catalogue.xml)  contains information about the product such as its name and description.
+Feed [`files/catalog.xml`](files/catalog.xml)  contains information about the product such as its name and description.
 
 | Name    | Lang   |
 |---------|--------|
@@ -46,7 +46,7 @@ Our custom-made system called **Hornbach** has a special XML import format. It c
 In the source code, we solve this problem in a few steps and get the job done in a single query [`files/hornbach.xq`](files/hornbach.xq).
 
 1. Create an empty database called `hornbach`.
-2. Add resource [`files/catalogue.xml`](files/catalogue.xml) to `hornbach`.
+2. Add resource [`files/catalog.xml`](files/catalog.xml) to `hornbach`.
 3. Add resource [`files/warehouse.xml`](files/warehouse.xml) to `hornbach`.
 4. Run query [`files/hornbach.xq`](files/hornbach.xq).
 5. Print the result.
