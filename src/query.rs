@@ -18,7 +18,7 @@ pub struct Query<T> where T: DatabaseStream {
 
 impl<T> Query<T> where T: DatabaseStream {
 
-    pub fn new(id: String, connection: Connection<T>) -> Self {
+    pub(crate) fn new(id: String, connection: Connection<T>) -> Self {
         Self { id, connection }
     }
 
