@@ -11,6 +11,13 @@ enum Command {
     Updating = 0x1e,
 }
 
+/// Represents an XQuery code identified by the database.
+///
+/// Database query is created out of an XQuery syntax string. The XQuery gets send to the database and associated with
+/// an ID. Once the query ID is assigned, the XQuery cannot be changed, but the client may bind arguments or context
+/// for it.
+///
+/// Once happy with the arguments bound or context set, the Query can be executed or analysed.
 pub struct Query<T> where T: DatabaseStream {
     id: String,
     connection: Connection<T>,
@@ -22,6 +29,7 @@ impl<T> Query<T> where T: DatabaseStream {
         Self { id, connection }
     }
 
+    /// Closes and unregisters the query with the specified id.
     pub fn close(&mut self) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Close as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
@@ -29,6 +37,7 @@ impl<T> Query<T> where T: DatabaseStream {
         Ok(self)
     }
 
+    /// Binds a value to a variable. The type will be ignored if the value is `None`.
     pub fn bind(&mut self, name: &str, value: Option<&str>, value_type: Option<&str>) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Bind as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
@@ -45,24 +54,28 @@ impl<T> Query<T> where T: DatabaseStream {
         Ok(self)
     }
 
+    /// Executes the query and returns the result as a single string.
     pub fn execute(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Execute as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
 
+    /// Returns a string with query compilation and profiling info.
     pub fn info(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Info as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
 
+    /// Returns a string with all query serialization parameters, which can e.g. be assigned to the SERIALIZER option.
     pub fn options(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Options as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()
     }
 
+    /// Binds a value to the context. The type will be ignored if the value is `None`.
     pub fn context(&mut self, value: Option<&str>, value_type: Option<&str>) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Context as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
@@ -78,6 +91,7 @@ impl<T> Query<T> where T: DatabaseStream {
         Ok(self)
     }
 
+    /// Returns `true` if the query contains updating expressions; `false` otherwise.
     pub fn updating(&mut self) -> Result<String> {
         self.connection.send_cmd(Command::Updating as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;

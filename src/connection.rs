@@ -1,16 +1,26 @@
 use crate::{ClientError, DatabaseStream, Result};
 use std::io::{ Read, copy };
 
+/// Responsible for low-level communication with the stream. It does not understand what commands can be run, as
+/// opposed to the [`Client`] or what [`Query`] can do, but can serialize commands and process responses.
 pub struct Connection<T> where T: DatabaseStream {
     stream: T,
 }
 
 impl<T> Connection<T> where T: DatabaseStream {
 
+    /// Creates a connection that communicates with the database via the provided `stream`.
     pub fn new(stream: T) -> Self {
         Self { stream }
     }
 
+    /// Authenticates the connection using the
+    /// [server protocol](https://docs.basex.org/wiki/Server_Protocol#Authentication). Being authenticated is the
+    /// pre-requisite for every other method to work.
+    ///
+    /// # Arguments
+    /// * `user`: Username.
+    /// * `password`: Password.
     pub fn authenticate(&mut self, user: &str, password: &str) -> Result<&Self> {
         let response = self.read_string()?;
 

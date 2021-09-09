@@ -11,7 +11,10 @@ enum Command {
     Store = 13,
 }
 
-/// Encapsulates a command with optional input. To execute it, either call `with_input` or `without_input`.
+/// Encapsulates a command with optional input. To execute it, either call [`with_input`] or [`without_input`].
+///
+/// [`with_input`]: crate::client::CommandWithOptionalInput::with_input
+/// [`without_input`]: crate::client::CommandWithOptionalInput::without_input
 pub struct CommandWithOptionalInput<'a, T> where T: DatabaseStream {
     client: &'a mut Client<T>,
 }
@@ -37,7 +40,7 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 /// Represents an interface to communicate with the BaseX server. Its main purpose is to send database
 /// [commands](https://docs.basex.org/wiki/Commands) and create [queries](https://docs.basex.org/wiki/XQuery).
 ///
-/// Start by connecting to the database using `Client::connect`.
+/// Start by connecting to the database using [`Client::connect`].
 ///
 /// # Example
 /// ```rust
@@ -58,6 +61,8 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 ///     Ok(())
 /// }
 /// ```
+///
+/// [`Client::connect`]: crate::client::Client<TcpStream>::connect
 pub struct Client<T> where T: DatabaseStream {
     connection: Connection<T>,
 }
@@ -86,7 +91,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// authenticated.
     ///
     /// Typically, you only need to use this method when using a custom connection. It is used heavily in tests, for
-    /// example. For regular usage, refer to the `Client::connect` method.
+    /// example. For regular usage, refer to the [`Client::connect`] method.
     ///
     /// # Example
     /// ```rust
@@ -102,6 +107,8 @@ impl<T> Client<T> where T: DatabaseStream {
     ///     Ok(())
     /// }
     /// ```
+    ///
+    /// [`Client::connect`]: crate::client::Client<TcpStream>::connect
     pub fn new(connection: Connection<T>) -> Self {
         Self { connection }
     }
@@ -112,7 +119,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// Database creation can be controlled by setting [Create Options](http://docs.basex.org/wiki/Options#Create_Options)
     ///
     /// # Arguments
-    /// *  `name` must be a [valid database name](http://docs.basex.org/wiki/Commands#Valid_Names)
+    /// * `name` must be a [valid database name](http://docs.basex.org/wiki/Commands#Valid_Names)
     ///
     /// # Example
     /// ```rust
@@ -136,8 +143,8 @@ impl<T> Client<T> where T: DatabaseStream {
     /// input, or adds new documents if no resource exists at the specified path.
     ///
     /// # Arguments
-    /// *  `path` a path to put the input at in the currently opened database.
-    /// *  `input` a stream with XML data.
+    /// * `path` a path to put the input at in the currently opened database.
+    /// * `input` a stream with XML data.
     ///
     /// # Example
     /// ```rust
@@ -162,8 +169,8 @@ impl<T> Client<T> where T: DatabaseStream {
     /// path. An existing resource will be replaced.
     ///
     /// # Arguments
-    /// *  `path` a path to put the input at in the currently opened database.
-    /// *  `input` a stream with XML data.
+    /// * `path` a path to put the input at in the currently opened database.
+    /// * `input` a stream with XML data.
     ///
     /// # Example
     /// ```rust
@@ -192,8 +199,8 @@ impl<T> Client<T> where T: DatabaseStream {
     /// Caching can be enforced by turning the `ADDCACHE` option on.
     ///
     /// # Arguments
-    /// *  `path` a path to put the input at in the currently opened database.
-    /// *  `input` a stream with XML data.
+    /// * `path` a path to put the input at in the currently opened database.
+    /// * `input` a stream with XML data.
     ///
     /// # Example
     /// ```rust
@@ -217,7 +224,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// Creates new query instance from given XQuery string.
     ///
     /// # Arguments
-    /// *  `query` a stream with XQuery data.
+    /// * `query` a stream with XQuery data.
     ///
     /// # Example
     /// ```rust

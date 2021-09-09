@@ -2,11 +2,21 @@ use std::fmt::{Display, Formatter};
 use std::io::Error;
 use std::string::FromUtf8Error;
 
+/// The error type for the DB operations of the [`Client`], [`Query`] and associated structs and traits.
+///
+/// Errors mostly occur while communicating with the database, but can also happen e.g. when parsing arguments.
+///
+/// [`Client`]: crate::client::Client
+/// [`Query`]: crate::query::Query
 #[derive(Debug)]
 pub enum ClientError {
+    /// The database connection stream or parsing arguments has resulted in an error.
     Io(Error),
+    /// The byte sequence being parsed is not a valid UTF-8 sequence.
     Utf8Parse(FromUtf8Error),
+    /// The provided credentials for authorizing are invalid.
     Auth,
+    /// The command was processed but failed to get the expected result.
     CommandFailed {
         message: String,
     },
