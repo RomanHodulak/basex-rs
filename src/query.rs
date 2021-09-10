@@ -91,11 +91,16 @@ impl<T> Query<T> where T: DatabaseStream {
         Ok(self)
     }
 
-    /// Returns `true` if the query contains updating expressions; `false` otherwise.
-    pub fn updating(&mut self) -> Result<String> {
+    /// Checks if the query contains updating expressions.
+    pub fn updating(&mut self) -> Result<bool> {
         self.connection.send_cmd(Command::Updating as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.get_response()
+
+        match self.connection.get_response()?.as_str() {
+            "true" => Ok(true),
+            "false" => Ok(false),
+            other => panic!("Expected boolean string, got \"{}\"", other),
+        }
     }
 }
 
@@ -227,20 +232,46 @@ mod tests {
 
     #[test]
     fn test_query_runs_updating_command() {
-        let expected_response = "test_response";
-        let stream = MockStream::new(expected_response.to_owned());
+        let stream = MockStream::new("true".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_response = query.updating().unwrap();
 
-        assert_eq!(expected_response, actual_response);
+        assert!(actual_response);
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
         let expected_buffer = "\u{1e}test\u{0}".to_owned();
 
         assert_eq!(expected_buffer, actual_buffer);
+    }
+
+    #[test]
+    fn test_query_runs_non_updating_command() {
+        let stream = MockStream::new("false".to_owned());
+        let connection = Connection::new(stream);
+
+        let mut query = Query::new("test".to_owned(), connection);
+        let actual_response = query.updating().unwrap();
+
+        assert!(!actual_response);
+
+        let stream = query.into_inner().into_inner();
+        let actual_buffer = stream.to_string();
+        let expected_buffer = "\u{1e}test\u{0}".to_owned();
+
+        assert_eq!(expected_buffer, actual_buffer);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_query_panics_updating_command_response_is_not_bool() {
+        let stream = MockStream::new("test_response".to_owned());
+        let connection = Connection::new(stream);
+
+        let mut query = Query::new("test".to_owned(), connection);
+        let _ = query.updating().unwrap();
     }
 
     #[test]
