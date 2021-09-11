@@ -9,6 +9,11 @@ repository = "https://github.com/RomanHodulak/basex_client"
 readme = "README.md"
 categories = ["database"]
 keywords = ["database", "basex", "xml", "xquery", "xpath"]
+include = [
+    "src/*.rs",
+    "tests/",
+    "Cargo.toml",
+]
 
 [dependencies]
 md5 = "0.6.1"
