@@ -18,7 +18,7 @@ Compatible with versions 8.x and 9.x.
 Add the library to the list of dependencies in your `Cargo.toml` like so:
 ```toml
 [dependencies]
-basex = "0.2.0"
+basex = "0.3.0"
 ```
 
 ## Usage
@@ -42,12 +42,19 @@ Client::connect("localhost", 1984, "admin", "admin")?
 You can now send commands.
 
 ### 3. Open database
-To run a query, you need to open a database. **Opening existing database is unsupported at this moment and will be available in version 0.3.**
+To run a query, you need to open a database.
 
-The only way to open database is to create it, which also opens it. You have to follow the create call with either `without_input` or `with_input` to optionally specify initial XML resource.
+#### 3.1. Create a new database
+Creating a database also opens it. Follow the create call with either `without_input` or `with_input` to optionally specify initial XML resource.
 
 ```
-client.create("coolbase").with_input(&mut xml);
+let info = client.create("coolbase")?.with_input(&mut xml)?;
+```
+
+#### 3.2. Open an existing database
+Use `Client::execute` with command [`OPEN [name]`](https://docs.basex.org/wiki/Commands#OPEN).
+```
+let (client, info) = client.execute("OPEN coolbase")?.close()?;
 ```
 
 ### 4. Run queries
