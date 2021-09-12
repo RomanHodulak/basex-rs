@@ -109,18 +109,10 @@ impl<T> Connection<T> where T: DatabaseStream {
 
 impl<T> Read for Connection<T> where T: DatabaseStream {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        if buf.is_empty() {
-            return Ok(0);
+        match buf.is_empty() {
+            true => Ok(0),
+            false => self.stream.read(buf),
         }
-
-        let len = self.stream.read(buf)?;
-        let last_byte = buf.last().unwrap();
-
-        if *last_byte == 0 {
-            return Ok(if len > 0 { len - 1 } else { 0 });
-        }
-
-        Ok(len)
     }
 }
 
@@ -244,12 +236,12 @@ mod tests {
 
     #[test]
     fn test_read_string_from_connection() {
-        let expected_string = "test_string";
-        let stream = MockStream::new(expected_string.to_owned());
+        let stream = MockStream::new("test_string".to_owned());
         let mut connection = Connection::new(stream);
 
         let mut actual_string = String::new();
         let _ = connection.read_to_string(&mut actual_string).unwrap();
+        let expected_string = "test_string\u{0}";
 
         assert_eq!(expected_string, &actual_string);
     }
