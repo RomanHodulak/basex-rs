@@ -43,23 +43,23 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 /// Start by connecting to the database using [`Client::connect`].
 ///
 /// # Example
-/// ```rust
+/// ```
 /// use basex::{Client, ClientError, Connection};
 ///
-/// fn main() -> Result<(), ClientError> {
-///     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+/// # fn main() -> Result<(), ClientError> {
+/// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///
-///     let info = client.create("lambada")?
-///         .with_input(&mut "<Root><Text></Text><Lala></Lala><Papa></Papa></Root>".as_bytes())?;
-///     assert!(info.starts_with("Database 'lambada' created"));
+/// let info = client.create("lambada")?
+///     .with_input(&mut "<Root><Text></Text><Lala></Lala><Papa></Papa></Root>".as_bytes())?;
+/// assert!(info.starts_with("Database 'lambada' created"));
 ///
-///     let mut query = client.query(&mut "count(/Root/*)".as_bytes())?;
-///     let result = query.execute()?;
-///     assert_eq!(result, "3");
+/// let mut query = client.query(&mut "count(/Root/*)".as_bytes())?;
+/// let result = query.execute()?;
+/// assert_eq!(result, "3");
 ///
-///     let _ = query.close()?;
-///     Ok(())
-/// }
+/// query.close()?;
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// [`Client::connect`]: crate::client::Client<TcpStream>::connect
@@ -71,10 +71,13 @@ impl Client<TcpStream> {
     /// Connects and authenticates to BaseX server using TCP stream.
     ///
     /// # Example
-    /// ```rust
-    /// use basex::Client;
+    /// ```
+    /// use basex::{Client, ClientError};
     ///
-    /// let client = Client::connect("localhost", 1984, "admin", "admin");
+    /// # fn main() -> Result<(), ClientError> {
+    /// let client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn connect(host: &str, port: u16, user: &str, password: &str) -> Result<Client<TcpStream>> {
         let stream = TcpStream::connect(&format!("{}:{}", host, port))?;
@@ -94,18 +97,18 @@ impl<T> Client<T> where T: DatabaseStream {
     /// example. For regular usage, refer to the [`Client::connect`] method.
     ///
     /// # Example
-    /// ```rust
+    /// ```
     /// use basex::{Client, ClientError, Connection};
     /// use std::net::TcpStream;
     ///
-    /// fn main() -> Result<(), ClientError> {
-    ///     let stream = TcpStream::connect("localhost:1984")?;
-    ///     let mut connection = Connection::new(stream);
-    ///     connection.authenticate("admin", "admin")?;
+    /// # fn main() -> Result<(), ClientError> {
+    /// let stream = TcpStream::connect("localhost:1984")?;
+    /// let mut connection = Connection::new(stream);
+    /// connection.authenticate("admin", "admin")?;
     ///
-    ///     let client = Client::new(connection);
-    ///     Ok(())
-    /// }
+    /// let client = Client::new(connection);
+    /// # Ok(())
+    /// # }
     /// ```
     ///
     /// [`Client::connect`]: crate::client::Client<TcpStream>::connect
@@ -122,16 +125,15 @@ impl<T> Client<T> where T: DatabaseStream {
     /// * `name` must be a [valid database name](http://docs.basex.org/wiki/Commands#Valid_Names)
     ///
     /// # Example
-    /// ```rust
+    /// ```
     /// use basex::{Client, ClientError};
     ///
-    /// fn main() -> Result<(), ClientError> {
-    ///     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    ///     let _ = client.create("boy_sminem")?.with_input(&mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
-    ///     let _ = client.create("bogdanoff")?.without_input()?;
-    ///
-    ///     Ok(())
-    /// }
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// client.create("boy_sminem")?.with_input(&mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
+    /// client.create("bogdanoff")?.without_input()?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn create(&mut self, name: &str) -> Result<CommandWithOptionalInput<T>> {
         self.connection.send_cmd(Command::Create as u8)?;
@@ -147,16 +149,15 @@ impl<T> Client<T> where T: DatabaseStream {
     /// * `input` a stream with XML data.
     ///
     /// # Example
-    /// ```rust
+    /// ```
     /// use basex::{Client, ClientError};
     ///
-    /// fn main() -> Result<(), ClientError> {
-    ///     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    ///     let _ = client.create("bell")?.without_input()?;
-    ///     let _ = client.replace("bogdanoff", &mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
-    ///
-    ///     Ok(())
-    /// }
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// client.create("bell")?.without_input()?;
+    /// client.replace("bogdanoff", &mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn replace<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
         self.connection.send_cmd(Command::Replace as u8)?;
@@ -173,17 +174,16 @@ impl<T> Client<T> where T: DatabaseStream {
     /// * `input` a stream with XML data.
     ///
     /// # Example
-    /// ```rust
+    /// ```
     /// use basex::{Client, ClientError};
     ///
-    /// fn main() -> Result<(), ClientError> {
-    ///     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    ///     let mut blob = [0 as u8, 1, 2, 3];
-    ///     let _ = client.create("asylum")?.without_input()?;
-    ///     let _ = client.store("bogdanoff", &mut &blob[..])?;
-    ///
-    ///     Ok(())
-    /// }
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// let mut blob = [0 as u8, 1, 2, 3];
+    /// client.create("asylum")?.without_input()?;
+    /// client.store("bogdanoff", &mut &blob[..])?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn store<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
         self.connection.send_cmd(Command::Store as u8)?;
@@ -203,16 +203,15 @@ impl<T> Client<T> where T: DatabaseStream {
     /// * `input` a stream with XML data.
     ///
     /// # Example
-    /// ```rust
+    /// ```
     /// use basex::{Client, ClientError};
     ///
-    /// fn main() -> Result<(), ClientError> {
-    ///     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    ///     let _ = client.create("taurus")?.without_input()?;
-    ///     let _ = client.add("bogdanoff", &mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
-    ///
-    ///     Ok(())
-    /// }
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// client.create("taurus")?.without_input()?;
+    /// client.add("bogdanoff", &mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn add<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
         self.connection.send_cmd(Command::Add as u8)?;
@@ -227,23 +226,23 @@ impl<T> Client<T> where T: DatabaseStream {
     /// * `query` a stream with XQuery data.
     ///
     /// # Example
-    /// ```rust
+    /// ```
     /// use basex::{Client, ClientError};
     ///
-    /// fn main() -> Result<(), ClientError> {
-    ///     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     ///
-    ///     let info = client.create("triangle")?
-    ///         .with_input(&mut "<polygon><line></line><line></line><line></line></polygon>".as_bytes())?;
-    ///     assert!(info.starts_with("Database 'triangle' created"));
+    /// let info = client.create("triangle")?
+    ///     .with_input(&mut "<polygon><line></line><line></line><line></line></polygon>".as_bytes())?;
+    /// assert!(info.starts_with("Database 'triangle' created"));
     ///
-    ///     let mut query = client.query(&mut "count(/polygon/*)".as_bytes())?;
-    ///     let result = query.execute()?;
-    ///     assert_eq!(result, "3");
+    /// let mut query = client.query(&mut "count(/polygon/*)".as_bytes())?;
+    /// let result = query.execute()?;
+    /// assert_eq!(result, "3");
     ///
-    ///     let _ = query.close()?;
-    ///     Ok(())
-    /// }
+    /// query.close()?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn query<R: Read>(&mut self, query: &mut R) -> Result<Query<T>> {
         self.connection.send_cmd(Command::Query as u8)?;
