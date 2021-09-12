@@ -1,5 +1,6 @@
 use crate::{ClientError, DatabaseStream, Result};
 use std::io::{ Read, copy };
+use crate::connection::escape_reader::EscapeReader;
 
 /// Responsible for low-level communication with the stream. It does not understand what commands can be run, as
 /// opposed to the [`Client`] or what [`Query`] can do, but can serialize commands and process responses.
@@ -66,7 +67,7 @@ impl<T> Connection<T> where T: DatabaseStream {
     }
 
     pub(crate) fn send_arg<R: Read>(&mut self, argument: &mut R) -> Result<&mut Self> {
-        copy(argument, &mut self.stream)?;
+        copy(&mut EscapeReader::new(argument), &mut self.stream)?;
 
         self.skip_arg()
     }
