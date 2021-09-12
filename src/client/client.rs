@@ -1,6 +1,7 @@
 use crate::{Result, Connection, Query, DatabaseStream};
 use std::net::TcpStream;
 use std::io::Read;
+use crate::client::Response;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 enum Command {
@@ -114,6 +115,29 @@ impl<T> Client<T> where T: DatabaseStream {
     /// [`Client::connect`]: crate::client::Client<TcpStream>::connect
     pub fn new(connection: Connection<T>) -> Self {
         Self { connection }
+    }
+
+    /// Executes a [database command](https://docs.basex.org/wiki/Commands).
+    ///
+    /// # Arguments
+    /// * `command` DB command to execute including arguments.
+    ///
+    /// # Example
+    /// ```
+    /// use basex::{Client, ClientError};
+    /// use std::io::Read;
+    ///
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// let mut list = String::new();
+    /// client.execute("LIST")?.read_to_string(&mut list)?;
+    /// println!("{}", list);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn execute(mut self, command: &str) -> Result<Response<T>> {
+        self.connection.send_arg(&mut command.as_bytes())?;
+        Ok(Response::new(self.connection))
     }
 
     /// Creates a new database with the specified name and, optionally, an initial input, and opens it. An existing

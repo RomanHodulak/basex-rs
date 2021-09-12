@@ -45,7 +45,7 @@ impl<T> Connection<T> where T: DatabaseStream {
         Ok(self)
     }
 
-    fn read_string(&mut self) -> Result<String> {
+    pub(crate) fn read_string(&mut self) -> Result<String> {
         let mut raw_string: Vec<u8> = vec![];
         loop {
             let mut buf: [u8; 1] = [0];
@@ -92,7 +92,7 @@ impl<T> Connection<T> where T: DatabaseStream {
     }
 
     /// Reads return code and decodes it to TRUE on success or FALSE on error.
-    fn is_ok(&mut self) -> Result<bool> {
+    pub(crate) fn is_ok(&mut self) -> Result<bool> {
         let mut buf: [u8; 1] = [0];
         self.stream.read(&mut buf)?;
 
