@@ -10,7 +10,7 @@ readme = "README.md"
 categories = ["database"]
 keywords = ["database", "basex", "xml", "xquery", "xpath"]
 include = [
-    "src/*.rs",
+    "src/**/*.rs",
     "tests/",
     "Cargo.toml",
 ]
