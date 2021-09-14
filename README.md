@@ -16,6 +16,7 @@ Compatible with versions 8.x and 9.x.
 
 ## Installation
 Add the library to the list of dependencies in your `Cargo.toml` like so:
+
 ```toml
 [dependencies]
 basex = "0.3.0"
@@ -35,8 +36,8 @@ Every example can be run with this server configuration.
 ### 2. Connect to the server
 Before you can do anything with the database server, you need to establish connection and authorize. Typically, you do this by calling `Client::connect`. If you get Ok result, you get the instance of the `Client`. Having its instance guarantees to have an open session with the server.
 
-```
-Client::connect("localhost", 1984, "admin", "admin")?
+```rust
+let client = Client::connect("localhost", 1984, "admin", "admin")?;
 ```
 
 You can now send commands.
@@ -47,13 +48,14 @@ To run a query, you need to open a database.
 #### 3.1. Create a new database
 Creating a database also opens it. Follow the create call with either `without_input` or `with_input` to optionally specify initial XML resource.
 
-```
+```rust
 let info = client.create("coolbase")?.with_input(&mut xml)?;
 ```
 
 #### 3.2. Open an existing database
 Use `Client::execute` with command [`OPEN [name]`](https://docs.basex.org/wiki/Commands#OPEN).
-```
+
+```rust
 let (client, info) = client.execute("OPEN coolbase")?.close()?;
 ```
 
@@ -80,10 +82,11 @@ fn main() -> Result<(), ClientError> {
 
     let mut xquery = "count(/Root/*)".as_bytes();
     let mut query = client.query(&mut xquery)?;
+
     let result = query.execute()?;
     assert_eq!(result, "3");
 
-    let _ = query.close()?;
+    query.close()?;
     Ok(())
 }
 ```
