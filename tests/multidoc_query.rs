@@ -3,6 +3,7 @@ mod common;
 use basex;
 use basex::{Client, ClientError};
 use common::Asset;
+use std::io::Read;
 
 #[test]
 fn test_executing_query_with_2_files() -> Result<(), ClientError> {
@@ -20,10 +21,13 @@ fn test_executing_query_with_2_files() -> Result<(), ClientError> {
     let info = client.add("powder", &mut test_xml.as_ref())?;
     assert!(info.starts_with("Resource(s) added"));
 
-    let mut query = client.query(&mut "count(//artikl)".as_bytes())?;
-    let result = query.execute()?;
+    let query = client.query(&mut "count(//artikl)".as_bytes())?;
+    let mut result = String::new();
+    let mut response = query.execute()?;
+    response.read_to_string(&mut result)?;
     assert_eq!(result, "3");
 
-    let _ = query.close()?;
+    let mut query = response.close()?;
+    query.close()?;
     Ok(())
 }

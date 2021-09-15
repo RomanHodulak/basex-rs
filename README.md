@@ -72,6 +72,7 @@ The following example creates database "lambada" with initial XML resource and c
 
 ```rust
 use basex::{Client, ClientError};
+use std::io::Read;
 
 fn main() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
@@ -81,11 +82,14 @@ fn main() -> Result<(), ClientError> {
     assert!(info.starts_with("Database 'lambada' created"));
 
     let mut xquery = "count(/Root/*)".as_bytes();
-    let mut query = client.query(&mut xquery)?;
+    let query = client.query(&mut xquery)?;
 
-    let result = query.execute()?;
+    let mut result = String::new();
+    let mut response = query.execute()?;
+    response.read_to_string(&mut result)?;
     assert_eq!(result, "3");
 
+    let mut query = response.close()?;
     query.close()?;
     Ok(())
 }

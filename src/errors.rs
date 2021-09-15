@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::io::Error;
 use std::string::FromUtf8Error;
+use crate::query::QueryFailed;
 
 /// The error type for the DB operations of the [`Client`], [`Query`] and associated structs and traits.
 ///
@@ -20,6 +21,8 @@ pub enum ClientError {
     CommandFailed {
         message: String,
     },
+    /// The query was processed but failed to get the expected result.
+    QueryFailed(QueryFailed),
 }
 
 impl Display for ClientError {
@@ -29,6 +32,7 @@ impl Display for ClientError {
             ClientError::Utf8Parse(ref e) => e.fmt(f),
             ClientError::Auth => write!(f, "Access denied."),
             ClientError::CommandFailed { message } => write!(f, "{}", message),
+            ClientError::QueryFailed(q) => write!(f, "{}", q.raw()),
         }
     }
 }
@@ -95,6 +99,22 @@ mod tests {
     #[test]
     fn test_command_failed_formats_as_empty() {
         let error = ClientError::CommandFailed { message: "error".to_owned() };
+        let _ = format!("{}", error);
+    }
+
+    #[test]
+    fn test_query_failed_formats_as_debug() {
+        let error = ClientError::QueryFailed(QueryFailed::new(
+            "Stopped at ., 1/1: [XPST0008] Undeclared variable $x.".to_owned()
+        ));
+        let _ = format!("{:?}", error);
+    }
+
+    #[test]
+    fn test_query_failed_formats_as_empty() {
+        let error = ClientError::QueryFailed(QueryFailed::new(
+            "Stopped at ., 1/1: [XPST0008] Undeclared variable $x.".to_owned()
+        ));
         let _ = format!("{}", error);
     }
 }

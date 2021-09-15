@@ -18,9 +18,6 @@ fn test_storing_and_retrieving_binary_file_succeeds() -> Result<(), ClientError>
     response.read_to_end(&mut actual_result)?;
     let (_, info) = response.close()?;
 
-    println!("{:?}", actual_result);
-    println!("{}", info);
-
     assert_eq!(expected_result.to_vec(), actual_result);
     assert!(info.starts_with("Query executed in"));
 

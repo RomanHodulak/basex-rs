@@ -48,16 +48,20 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 /// use basex::{Client, ClientError, Connection};
 ///
 /// # fn main() -> Result<(), ClientError> {
+/// use std::io::Read;
 /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///
 /// let info = client.create("lambada")?
 ///     .with_input(&mut "<Root><Text></Text><Lala></Lala><Papa></Papa></Root>".as_bytes())?;
 /// assert!(info.starts_with("Database 'lambada' created"));
 ///
-/// let mut query = client.query(&mut "count(/Root/*)".as_bytes())?;
-/// let result = query.execute()?;
+/// let query = client.query(&mut "count(/Root/*)".as_bytes())?;
+/// let mut result = String::new();
+/// let mut response = query.execute()?;
+/// response.read_to_string(&mut result);
 /// assert_eq!(result, "3");
 ///
+/// let mut query = response.close()?;
 /// query.close()?;
 /// # Ok(())
 /// # }
@@ -254,16 +258,20 @@ impl<T> Client<T> where T: DatabaseStream {
     /// use basex::{Client, ClientError};
     ///
     /// # fn main() -> Result<(), ClientError> {
+    /// use std::io::Read;
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     ///
     /// let info = client.create("triangle")?
     ///     .with_input(&mut "<polygon><line></line><line></line><line></line></polygon>".as_bytes())?;
     /// assert!(info.starts_with("Database 'triangle' created"));
     ///
-    /// let mut query = client.query(&mut "count(/polygon/*)".as_bytes())?;
-    /// let result = query.execute()?;
+    /// let query = client.query(&mut "count(/polygon/*)".as_bytes())?;
+    /// let mut result = String::new();
+    /// let mut response = query.execute()?;
+    /// response.read_to_string(&mut result)?;
     /// assert_eq!(result, "3");
     ///
+    /// let mut query = response.close()?;
     /// query.close()?;
     /// # Ok(())
     /// # }

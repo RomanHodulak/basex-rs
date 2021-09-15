@@ -3,6 +3,7 @@ mod common;
 use basex;
 use basex::{Client, ClientError};
 use common::Asset;
+use std::io::Read;
 
 #[test]
 fn test_query_combines_2_documents() -> Result<(), ClientError> {
@@ -20,12 +21,15 @@ fn test_query_combines_2_documents() -> Result<(), ClientError> {
     assert!(info.starts_with("Resource(s) added"));
 
     let xquery = Asset::get("harvester.xq").unwrap();
-    let mut query = client.query(&mut xquery.as_ref())?;
-    let actual_result = query.execute()?;
+    let query = client.query(&mut xquery.as_ref())?;
+    let mut actual_result = String::new();
+    let mut response = query.execute()?;
+    response.read_to_string(&mut actual_result)?;
 
     let expected_result = Asset::get("harvester_output.xml").unwrap();
     assert_eq!(actual_result.as_bytes(), expected_result.as_ref());
 
-    let _ = query.close()?;
+    let mut query = response.close()?;
+    query.close()?;
     Ok(())
 }

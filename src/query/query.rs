@@ -1,4 +1,5 @@
 use crate::{Result, Connection, DatabaseStream};
+use crate::query::response::Response;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
 enum Command {
@@ -54,11 +55,37 @@ impl<T> Query<T> where T: DatabaseStream {
         Ok(self)
     }
 
-    /// Executes the query and returns the result as a single string.
-    pub fn execute(&mut self) -> Result<String> {
+    /// Executes the query and returns its response.
+    ///
+    /// # Example
+    /// ```
+    /// use basex::{Client, ClientError};
+    /// use std::io::Read;
+    ///
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// let mut xquery = "declare variable $points := 30;
+    /// <polygon>
+    ///   {
+    ///     for $i in 1 to $points
+    ///     let $angle := 2 * math:pi() * number($i div $points)
+    ///     return <point x=\"{round(math:cos($angle), 8)}\" y=\"{round(math:sin($angle), 8)}\"></point>
+    ///   }
+    /// </polygon>".as_bytes();
+    /// let query = client.query(&mut xquery)?;
+    ///
+    /// let mut result = String::new();
+    /// let mut response = query.execute()?;
+    /// response.read_to_string(&mut result)?;
+    ///
+    /// println!("{}", result);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn execute(mut self) -> Result<Response<T>> {
         self.connection.send_cmd(Command::Execute as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.get_response()
+        Ok(Response::new(self.id, self.connection))
     }
 
     /// Returns a string with query compilation and profiling info.
@@ -109,6 +136,7 @@ mod tests {
     use super::*;
     use crate::tests::{MockStream, FailingStream};
     use crate::ClientError;
+    use std::io::Read;
 
     impl<T> Query<T> where T: DatabaseStream {
         pub(crate) fn into_inner(self) -> Connection<T> {
@@ -205,14 +233,17 @@ mod tests {
     #[test]
     fn test_query_executes() {
         let expected_response = "test_response";
-        let stream = MockStream::new(expected_response.to_owned());
+        let stream = MockStream::new(expected_response.to_owned() + "\0");
         let connection = Connection::new(stream);
 
-        let mut query = Query::new("test".to_owned(), connection);
-        let actual_response = query.execute().unwrap();
+        let query = Query::new("test".to_owned(), connection);
+        let mut actual_response = String::new();
+        let mut response = query.execute().unwrap();
+        response.read_to_string(&mut actual_response).unwrap();
 
         assert_eq!(expected_response, actual_response);
 
+        let query = response.close().unwrap();
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
         let expected_buffer = "\u{5}test\u{0}".to_owned();
@@ -224,8 +255,8 @@ mod tests {
     fn test_query_fails_to_execute_with_failing_stream() {
         let connection = Connection::new(FailingStream);
 
-        let mut query = Query::new("test".to_owned(), connection);
-        let actual_error = query.execute().expect_err("Operation must fail");
+        let query = Query::new("test".to_owned(), connection);
+        let actual_error = query.execute().err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
     }

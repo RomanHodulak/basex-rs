@@ -1,5 +1,6 @@
 use basex::{Client, ClientError};
 use std::fs::File;
+use std::io::Read;
 
 macro_rules! path {
     ($path:expr) => {
@@ -22,9 +23,12 @@ fn main() -> Result<(), ClientError> {
     let info = client.add("warehouse", &mut warehouse)?;
     assert!(info.starts_with("Resource(s) added"));
 
-    let mut query = client.query(&mut xquery)?;
-    let result = query.execute()?;
-    let _ = query.close()?;
+    let query = client.query(&mut xquery)?;
+    let mut result = String::new();
+    let mut response = query.execute()?;
+    response.read_to_string(&mut result)?;
+    let mut query = response.close()?;
+    query.close()?;
 
     println!("{}", result);
 

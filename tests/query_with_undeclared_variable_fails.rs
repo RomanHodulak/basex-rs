@@ -7,10 +7,18 @@ use basex::{Client, ClientError};
 fn test_query_with_undeclared_variable_fails() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
-    let mut query = client.query(&mut "$x".as_bytes())?;
-    let actual_error = query.execute().unwrap_err();
-    assert!(matches!(actual_error, ClientError::CommandFailed { message } if message == "" ));
-
-    let _ = query.close()?;
+    let query = client.query(&mut "$x".as_bytes())?;
+    let actual_error = query.execute()?.close().err().unwrap();
+    match &actual_error {
+        ClientError::QueryFailed(q) => {
+            assert_eq!("Stopped at ., 1/1:\n[XPST0008] Undeclared variable: $x.", q.raw());
+            assert_eq!("Undeclared variable: $x.", q.message());
+            assert_eq!(1, q.line());
+            assert_eq!(1, q.position());
+            assert_eq!(".", q.file());
+            assert_eq!("XPST0008", q.code());
+        },
+        _ => assert!(false),
+    };
     Ok(())
 }
