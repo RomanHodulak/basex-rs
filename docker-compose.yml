@@ -1,7 +1,7 @@
 version: "3.7"
 services:
     basex:
-        image: basex/basexhttp:9.1.2
+        image: basex/basexhttp:9.5.2
         container_name: basex-basex
         volumes:
             - ./docker/data:/srv/basex/data

@@ -28,7 +28,7 @@ basex = "0.3.0"
 First, you need to have BaseX server up and running. If you want to try it out, you can do it right away using docker.
 
 ```shell
-docker run -p 1984:1984 basex/basexhttp:9.1.2
+docker run -p 1984:1984 basex/basexhttp:9.5.2
 ```
 
 Every example can be run with this server configuration.
