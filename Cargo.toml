@@ -15,6 +15,9 @@ include = [
     "Cargo.toml",
 ]
 
+[package.metadata.docs.rs]
+rustdoc-args = ["--document-private-items"]
+
 [dependencies]
 md5 = "0.6.1"
 
