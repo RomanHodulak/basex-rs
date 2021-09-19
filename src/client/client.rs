@@ -14,8 +14,8 @@ enum Command {
 
 /// Encapsulates a command with optional input. To execute it, either call [`with_input`] or [`without_input`].
 ///
-/// [`with_input`]: crate::client::CommandWithOptionalInput::with_input
-/// [`without_input`]: crate::client::CommandWithOptionalInput::without_input
+/// [`with_input`]: self::CommandWithOptionalInput::with_input
+/// [`without_input`]: self::CommandWithOptionalInput::without_input
 pub struct CommandWithOptionalInput<'a, T> where T: DatabaseStream {
     client: &'a mut Client<T>,
 }

@@ -12,7 +12,7 @@ enum Command {
     Updating = 0x1e,
 }
 
-/// Represents an XQuery code identified by the database.
+/// Represents an [XQuery](https://docs.basex.org/wiki/XQuery) code uniquely identified by the database.
 ///
 /// Database query is created out of an XQuery syntax string. The XQuery gets send to the database and associated with
 /// an ID. Once the query ID is assigned, the XQuery cannot be changed, but the client may bind arguments or context

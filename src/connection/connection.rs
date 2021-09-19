@@ -2,8 +2,14 @@ use crate::{ClientError, DatabaseStream, Result};
 use std::io::{ Read, copy };
 use crate::connection::escape_reader::EscapeReader;
 
-/// Responsible for low-level communication with the stream. It does not understand what commands can be run, as
-/// opposed to the [`Client`] or what [`Query`] can do, but can serialize commands and process responses.
+/// Responsible for low-level communication with the stream. It handles
+/// [authentication](https://docs.basex.org/wiki/Server_Protocol#Authentication), sends commands and reads responses.
+///
+/// As opposed to the [`Client`] or [`Query`] can do, connection does not understand what commands do or how to parse
+/// responses. It can only send them, send arguments and be read like a stream.
+///
+/// [`Client`]: crate::client::Client
+/// [`Query`]: crate::query::Query
 pub struct Connection<T> where T: DatabaseStream {
     stream: T,
 }
