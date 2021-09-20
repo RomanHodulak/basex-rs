@@ -16,7 +16,7 @@ fn test_executing_simple_query() -> Result<(), ClientError> {
     response.read_to_string(&mut result)?;
     assert_eq!(result, "3");
 
-    let mut query = response.close()?;
+    let query = response.close()?;
     query.close()?;
     Ok(())
 }

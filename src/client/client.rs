@@ -276,7 +276,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn query<R: Read>(&mut self, query: &mut R) -> Result<Query<T>> {
+    pub fn query<R: Read>(mut self, query: &mut R) -> Result<Query<T>> {
         self.connection.send_cmd(Command::Query as u8)?;
         self.connection.send_arg(query)?;
         let id = self.connection.get_response()?;
@@ -290,6 +290,12 @@ mod tests {
     use super::*;
     use crate::tests::{MockStream, FailingStream};
     use crate::ClientError;
+
+    impl<T> Client<T> where T: DatabaseStream {
+        pub(crate) fn into_inner(self) -> Connection<T> {
+            self.connection
+        }
+    }
 
     #[test]
     fn test_database_is_created_with_input() {

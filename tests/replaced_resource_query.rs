@@ -27,7 +27,7 @@ fn test_executing_query_on_db_with_replaced_resource() -> Result<(), ClientError
     response.read_to_string(&mut result)?;
     assert_eq!(result, "3");
 
-    let mut query = response.close()?;
+    let query = response.close()?;
     query.close()?;
     Ok(())
 }

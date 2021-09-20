@@ -27,7 +27,7 @@ fn main() -> Result<(), ClientError> {
     let mut result = String::new();
     let mut response = query.execute()?;
     response.read_to_string(&mut result)?;
-    let mut query = response.close()?;
+    let query = response.close()?;
     query.close()?;
 
     println!("{}", result);

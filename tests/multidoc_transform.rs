@@ -29,7 +29,7 @@ fn test_query_combines_2_documents() -> Result<(), ClientError> {
     let expected_result = Asset::get("harvester_output.xml").unwrap();
     assert_eq!(actual_result.as_bytes(), expected_result.as_ref());
 
-    let mut query = response.close()?;
+    let query = response.close()?;
     query.close()?;
     Ok(())
 }

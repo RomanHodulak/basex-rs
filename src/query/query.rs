@@ -1,4 +1,4 @@
-use crate::{Result, Connection, DatabaseStream};
+use crate::{Result, Connection, DatabaseStream, Client};
 use crate::query::response::Response;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
@@ -31,11 +31,11 @@ impl<T> Query<T> where T: DatabaseStream {
     }
 
     /// Closes and unregisters the query with the specified id.
-    pub fn close(&mut self) -> Result<&mut Self> {
+    pub fn close(mut self) -> Result<Client<T>> {
         self.connection.send_cmd(Command::Close as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.get_response()?;
-        Ok(self)
+        Ok(Client::new(self.connection))
     }
 
     /// Binds a value to a variable. The type will be ignored if the value is `None`.
@@ -377,10 +377,10 @@ mod tests {
         let stream = MockStream::new(expected_response.to_owned());
         let connection = Connection::new(stream);
 
-        let mut query = Query::new("test".to_owned(), connection);
-        let _ = query.close().unwrap();
+        let query = Query::new("test".to_owned(), connection);
+        let client = query.close().unwrap();
 
-        let stream = query.into_inner().into_inner();
+        let stream = client.into_inner().into_inner();
         let actual_buffer = stream.to_string();
         let expected_buffer = "\u{2}test\u{0}".to_owned();
 
@@ -391,7 +391,7 @@ mod tests {
     fn test_query_fails_to_close_with_failing_stream() {
         let connection = Connection::new(FailingStream);
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let query = Query::new("test".to_owned(), connection);
         let actual_error = query.close().err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
