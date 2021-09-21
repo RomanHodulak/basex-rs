@@ -3,7 +3,7 @@ use basex::{Client, ClientError};
 use std::io::Read;
 
 #[test]
-fn test_executing_simple_query() -> Result<(), ClientError> {
+fn test_query_runs_on_created_database() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
     let info = client.create("lambada")?

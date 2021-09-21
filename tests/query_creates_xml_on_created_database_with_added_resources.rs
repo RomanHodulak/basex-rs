@@ -6,7 +6,7 @@ use common::Asset;
 use std::io::Read;
 
 #[test]
-fn test_query_combines_2_documents() -> Result<(), ClientError> {
+fn test_query_creates_xml_on_created_database_with_added_resources() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
     let info = client.create("lambada")?.without_input()?;
