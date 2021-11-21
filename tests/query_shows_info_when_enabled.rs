@@ -7,14 +7,14 @@ fn test_query_shows_info_when_enabled() -> Result<(), ClientError> {
 
     let database_name = "test_query_shows_info_when_enabled";
     let info = client.create(database_name)?
-        .with_input(&mut "<None><Text></Text><Lala></Lala><Papa></Papa></None>".as_bytes())?;
+        .with_input("<None><Text></Text><Lala></Lala><Papa></Papa></None>")?;
 
     assert!(info.starts_with(&format!("Database '{}' created", database_name)));
 
     let (client, _) = client.execute("SET QUERYINFO true")?
         .close()?;
 
-    let query = client.query(&mut "count(/None/*)".as_bytes())?;
+    let query = client.query("count(/None/*)")?;
     let mut query = query.execute()?.close()?;
     let actual_info = query.info()?;
     query.close()?;
@@ -33,11 +33,11 @@ fn test_query_hides_info_by_default() -> Result<(), ClientError> {
 
     let database_name = "test_query_hides_info_by_default";
     let info = client.create(database_name)?
-        .with_input(&mut "<None><Text></Text><Lala></Lala><Papa></Papa></None>".as_bytes())?;
+        .with_input("<None><Text></Text><Lala></Lala><Papa></Papa></None>")?;
 
     assert!(info.starts_with(&format!("Database '{}' created", database_name)));
 
-    let query = client.query(&mut "count(/None/*)".as_bytes())?;
+    let query = client.query("count(/None/*)")?;
     let mut query = query.execute()?.close()?;
     let actual_info = query.info()?;
     query.close()?;

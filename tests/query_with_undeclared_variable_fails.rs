@@ -7,7 +7,7 @@ use basex::{Client, ClientError};
 fn test_query_with_undeclared_variable_fails() -> Result<(), ClientError> {
     let client = Client::connect("localhost", 1984, "admin", "admin")?;
 
-    let query = client.query(&mut "$x".as_bytes())?;
+    let query = client.query("$x")?;
     let actual_error = query.execute()?.close().err().unwrap();
     assert!(matches!(actual_error, ClientError::QueryFailed(_)));
 

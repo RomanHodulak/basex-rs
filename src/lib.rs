@@ -3,6 +3,7 @@ mod connection;
 mod errors;
 mod query;
 mod stream;
+mod resource;
 #[cfg(test)]
 mod tests;
 

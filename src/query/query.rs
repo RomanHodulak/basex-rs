@@ -1,7 +1,7 @@
-use std::io::Read;
 use crate::{Result, Connection, DatabaseStream, Client};
 use crate::query::argument::{ArgumentWriter, ToQueryArgument};
 use crate::query::response::Response;
+use crate::resource::AsResource;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
 enum Command {
@@ -92,15 +92,14 @@ impl<T> Query<T> where T: DatabaseStream {
     ///
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    /// let mut xquery = "declare variable $points := 30;
+    /// let query = client.query("declare variable $points := 30;
     /// <polygon>
     ///   {
     ///     for $i in 1 to $points
     ///     let $angle := 2 * math:pi() * number($i div $points)
     ///     return <point x=\"{round(math:cos($angle), 8)}\" y=\"{round(math:sin($angle), 8)}\"></point>
     ///   }
-    /// </polygon>".as_bytes();
-    /// let query = client.query(&mut xquery)?;
+    /// </polygon>")?;
     ///
     /// let mut result = String::new();
     /// let mut response = query.execute()?;
@@ -130,11 +129,12 @@ impl<T> Query<T> where T: DatabaseStream {
         self.connection.get_response()
     }
 
-    /// Binds a value to the context. The type will be ignored if the value is `None`.
-    pub fn context<R: Read>(&mut self, value: &mut R) -> Result<&mut Self> {
+    /// Binds a resource to the context. Makes the default context unreachable and replaces whatever current context
+    /// is set.
+    pub fn context<'a, R: AsResource<'a>>(&mut self, value: R) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Context as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.send_arg(value)?;
+        self.connection.send_arg(&mut value.into_read())?;
         self.connection.send_arg(&mut "document-node()".as_bytes())?;
         self.connection.get_response()?;
         Ok(self)
@@ -204,7 +204,7 @@ mod tests {
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let _ = query.context(&mut "aaa".as_bytes()).unwrap();
+        let _ = query.context("aaa").unwrap();
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
@@ -219,7 +219,7 @@ mod tests {
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let _ = query.context(&mut "aaa".as_bytes()).unwrap();
+        let _ = query.context("aaa").unwrap();
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();

@@ -1,7 +1,7 @@
 use crate::{Result, Connection, Query, DatabaseStream};
 use std::net::TcpStream;
-use std::io::Read;
 use crate::client::Response;
+use crate::resource::AsResource;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 enum Command {
@@ -26,8 +26,8 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
     }
 
     /// Sends the input to the command and executes it, returning its response as a string.
-    pub fn with_input<R: Read>(self, input: &mut R) -> Result<String> {
-        self.connection.send_arg(input)?;
+    pub fn with_input<'b, R: AsResource<'b>>(self, input: R) -> Result<String> {
+        self.connection.send_arg(&mut input.into_read())?;
         self.connection.get_response()
     }
 
@@ -52,10 +52,10 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///
 /// let info = client.create("a45d766")?
-///     .with_input(&mut "<Root><Text></Text><Lala></Lala><Papa></Papa></Root>".as_bytes())?;
+///     .with_input("<Root><Text></Text><Lala></Lala><Papa></Papa></Root>")?;
 /// assert!(info.starts_with("Database 'a45d766' created"));
 ///
-/// let query = client.query(&mut "count(/Root/*)".as_bytes())?;
+/// let query = client.query("count(/Root/*)")?;
 /// let mut result = String::new();
 /// let mut response = query.execute()?;
 /// response.read_to_string(&mut result);
@@ -158,7 +158,7 @@ impl<T> Client<T> where T: DatabaseStream {
     ///
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    /// client.create("boy_sminem")?.with_input(&mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
+    /// client.create("boy_sminem")?.with_input("<wojak pink_index=\"69\"></wojak>")?;
     /// client.create("bogdanoff")?.without_input()?;
     /// # Ok(())
     /// # }
@@ -183,14 +183,14 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// client.create("bell")?.without_input()?;
-    /// client.replace("bogdanoff", &mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
+    /// client.replace("bogdanoff", "<wojak pink_index=\"69\"></wojak>")?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn replace<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
+    pub fn replace<'a, R: AsResource<'a>>(&mut self, path: &str, input: R) -> Result<String> where R: 'a {
         self.connection.send_cmd(Command::Replace as u8)?;
         self.connection.send_arg(&mut path.as_bytes())?;
-        self.connection.send_arg(input)?;
+        self.connection.send_arg(&mut input.into_read())?;
         self.connection.get_response()
     }
 
@@ -213,10 +213,10 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn store<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
+    pub fn store<'a, R: AsResource<'a>>(&mut self, path: &str, input: R) -> Result<String> {
         self.connection.send_cmd(Command::Store as u8)?;
         self.connection.send_arg(&mut path.as_bytes())?;
-        self.connection.send_arg(input)?;
+        self.connection.send_arg(&mut input.into_read())?;
         self.connection.get_response()
     }
 
@@ -241,10 +241,10 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn add<R: Read>(&mut self, path: &str, input: &mut R) -> Result<String> {
+    pub fn add<'a, R: AsResource<'a>>(&mut self, path: &str, input: R) -> Result<String> where R: 'a {
         self.connection.send_cmd(Command::Add as u8)?;
         self.connection.send_arg(&mut path.as_bytes())?;
-        self.connection.send_arg(input)?;
+        self.connection.send_arg(&mut input.into_read())?;
         self.connection.get_response()
     }
 
@@ -262,10 +262,10 @@ impl<T> Client<T> where T: DatabaseStream {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     ///
     /// let info = client.create("triangle")?
-    ///     .with_input(&mut "<polygon><line></line><line></line><line></line></polygon>".as_bytes())?;
+    ///     .with_input("<polygon><line></line><line></line><line></line></polygon>")?;
     /// assert!(info.starts_with("Database 'triangle' created"));
     ///
-    /// let query = client.query(&mut "count(/polygon/*)".as_bytes())?;
+    /// let query = client.query("count(/polygon/*)")?;
     /// let mut result = String::new();
     /// let mut response = query.execute()?;
     /// response.read_to_string(&mut result)?;
@@ -276,9 +276,9 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn query<R: Read>(mut self, query: &mut R) -> Result<Query<T>> {
+    pub fn query<'a, R: AsResource<'a>>(mut self, query: R) -> Result<Query<T>> {
         self.connection.send_cmd(Command::Query as u8)?;
-        self.connection.send_arg(query)?;
+        self.connection.send_arg(&mut query.into_read())?;
         let id = self.connection.get_response()?;
 
         Ok(Query::new(id, self.connection.try_clone()?))
@@ -303,7 +303,7 @@ mod tests {
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
         let info = client.create("boy_sminem").unwrap()
-            .with_input(&mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+            .with_input("<wojak><pink_index>69</pink_index></wojak>").unwrap();
 
         assert_eq!(stream.to_string(), "\u{8}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
         assert_eq!("test", info);
@@ -336,7 +336,7 @@ mod tests {
         let mut stream = MockStream::new("test".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
-        let info = client.replace("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+        let info = client.replace("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
 
         assert_eq!(stream.to_string(), "\u{c}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
         assert_eq!("test", info);
@@ -346,7 +346,7 @@ mod tests {
     fn test_resource_fails_to_replace_with_failing_stream() {
         let mut client = Client::new(Connection::new(FailingStream));
 
-        let actual_error = client.replace("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes())
+        let actual_error = client.replace("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
             .expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -357,7 +357,7 @@ mod tests {
         let mut stream = MockStream::new("test".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
-        let info = client.store("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+        let info = client.store("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
 
         assert_eq!(stream.to_string(), "\u{d}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
         assert_eq!("test", info);
@@ -367,7 +367,7 @@ mod tests {
     fn test_resource_fails_to_store_with_failing_stream() {
         let mut client = Client::new(Connection::new(FailingStream));
 
-        let actual_error = client.store("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes())
+        let actual_error = client.store("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
             .expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -378,7 +378,7 @@ mod tests {
         let mut stream = MockStream::new("test".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
-        let info = client.add("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes()).unwrap();
+        let info = client.add("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
 
         assert_eq!(stream.to_string(), "\u{9}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
         assert_eq!("test", info);
@@ -388,7 +388,7 @@ mod tests {
     fn test_resource_fails_to_add_with_failing_stream() {
         let mut client = Client::new(Connection::new(FailingStream));
 
-        let actual_error = client.add("boy_sminem", &mut "<wojak><pink_index>69</pink_index></wojak>".as_bytes())
+        let actual_error = client.add("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
             .expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));

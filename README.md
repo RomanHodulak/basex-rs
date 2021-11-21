@@ -76,13 +76,11 @@ use std::io::Read;
 
 fn main() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    let mut xml = "<Root><Text></Text><Lala></Lala><Papa></Papa></Root>".as_bytes();
-
-    let info = client.create("lambada")?.with_input(&mut xml)?;
+    let info = client.create("lambada")?
+        .with_input("<Root><Text/><Lala/><Papa/></Root>")?;
     assert!(info.starts_with("Database 'lambada' created"));
 
-    let mut xquery = "count(/Root/*)".as_bytes();
-    let query = client.query(&mut xquery)?;
+    let query = client.query("count(/Root/*)")?;
 
     let mut result = String::new();
     let mut response = query.execute()?;

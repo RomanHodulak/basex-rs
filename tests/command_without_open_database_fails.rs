@@ -7,7 +7,7 @@ use basex::{Client, ClientError};
 fn test_command_without_open_database_fails() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
-    let actual_error = client.add("lambada", &mut "<test></test>".as_bytes()).unwrap_err();
+    let actual_error = client.add("lambada", "<test></test>").unwrap_err();
 
     assert!(matches!(actual_error, ClientError::CommandFailed { message } if message == "No database opened."));
 

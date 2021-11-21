@@ -1,6 +1,6 @@
-use std::io::Read;
 use std::net::IpAddr;
 use crate::{Connection, DatabaseStream, Result};
+use crate::resource::AsResource;
 
 /// Writes argument values using a [`Connection`].
 ///
@@ -8,7 +8,7 @@ use crate::{Connection, DatabaseStream, Result};
 /// ```
 /// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
 /// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<T>) -> Result<()> {
-///     writer.write(&mut "data".as_bytes())
+///     writer.write("data")
 /// }
 /// ```
 /// [`Connection`]: crate::connection::Connection
@@ -21,11 +21,11 @@ impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
     /// ```
     /// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
     /// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<T>) -> Result<()> {
-    ///     writer.write(&mut "data".as_bytes())
+    ///     writer.write("data")
     /// }
     /// ```
-    pub fn write<R: Read>(&mut self, argument: &mut R) -> Result<()> {
-        self.0.send_arg(argument).map(|_| ())
+    pub fn write<'b, R: AsResource<'b>>(&mut self, argument: R) -> Result<()> {
+        self.0.send_arg(&mut argument.into_read()).map(|_| ())
     }
 }
 

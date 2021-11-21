@@ -9,18 +9,18 @@ fn test_command_after_unread_query_succeeds() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
     let info = client.create("dda5457")?
-        .with_input(&mut "<None><Text></Text><Lala></Lala><Papa></Papa></None>".as_bytes())?;
+        .with_input("<None><Text></Text><Lala></Lala><Papa></Papa></None>")?;
     assert!(info.starts_with("Database 'dda5457' created"));
 
-    let query = client.query(&mut "count(/None/*)".as_bytes())?;
+    let query = client.query("count(/None/*)")?;
     let response = query.execute()?;
     let query = response.close()?;
     let mut client = query.close()?;
 
-    let info = client.add("kakada", &mut "<test></test>".as_bytes())?;
+    let info = client.add("kakada", "<test></test>")?;
     assert!(info.starts_with("Resource(s) added"), "actual: {}", info);
 
-    let query = client.query(&mut "count(/None/*)".as_bytes())?;
+    let query = client.query("count(/None/*)")?;
 
     let mut result = String::new();
     let mut response = query.execute()?;
