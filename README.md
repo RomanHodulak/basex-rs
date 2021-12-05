@@ -19,7 +19,7 @@ Add the library to the list of dependencies in your `Cargo.toml` like so:
 
 ```toml
 [dependencies]
-basex = "0.4.0"
+basex = "0.5.0"
 ```
 
 ## Usage
