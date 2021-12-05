@@ -9,7 +9,7 @@ mod tests;
 pub use client::Client;
 pub use connection::Connection;
 pub use errors::ClientError;
-pub use query::Query;
+pub use query::{Query, ToQueryArgument, ArgumentWriter};
 pub use stream::DatabaseStream;
 
 /// A [`Result`] with its [`Err`] variant set to [`ClientError`].

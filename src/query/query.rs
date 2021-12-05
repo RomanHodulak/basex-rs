@@ -1,4 +1,5 @@
 use crate::{Result, Connection, DatabaseStream, Client};
+use crate::query::argument::{ArgumentWriter, ToQueryArgument};
 use crate::query::response::Response;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
@@ -10,6 +11,41 @@ enum Command {
     Options = 7,
     Context = 0x0e,
     Updating = 0x1e,
+}
+
+/// Encapsulates a query argument with optional value. To bind the argument, either call [`with_input`] or
+/// [`without_input`].
+///
+/// [`with_input`]: self::CommandWithOptionalInput::with_input
+/// [`without_input`]: self::CommandWithOptionalInput::without_input
+pub struct ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
+    query: &'a mut Query<T>,
+}
+
+impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
+    pub(crate) fn new(query: &'a mut Query<T>) -> Self {
+        Self { query }
+    }
+
+    /// Sends the value to the argument, returning back the mutable reference to [`Query`].
+    ///
+    /// [`Query`]: self::Query
+    pub fn with_value<'b, A: ToQueryArgument<'b>>(self, value: A) -> Result<&'a mut Query<T>> {
+        value.write_xquery(&mut ArgumentWriter(&mut self.query.connection))?;
+        self.query.connection.send_arg(&mut A::xquery_type().as_bytes())?;
+        self.query.connection.get_response()?;
+        Ok(self.query)
+    }
+
+    /// Omits the value from the argument, returning back the mutable reference to [`Query`].
+    ///
+    /// [`Query`]: self::Query
+    pub fn without_value(self) -> Result<&'a mut Query<T>> {
+        self.query.connection.skip_arg()?;
+        self.query.connection.skip_arg()?;
+        self.query.connection.get_response()?;
+        Ok(self.query)
+    }
 }
 
 /// Represents an [XQuery](https://docs.basex.org/wiki/XQuery) code uniquely identified by the database.
@@ -39,20 +75,11 @@ impl<T> Query<T> where T: DatabaseStream {
     }
 
     /// Binds a value to a variable. The type will be ignored if the value is `None`.
-    pub fn bind(&mut self, name: &str, value: Option<&str>, value_type: Option<&str>) -> Result<&mut Self> {
+    pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T>> {
         self.connection.send_cmd(Command::Bind as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.send_arg(&mut name.as_bytes())?;
-        match value {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
-            None => self.connection.skip_arg()?,
-        };
-        match value_type {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
-            None => self.connection.skip_arg()?,
-        };
-        self.connection.get_response()?;
-        Ok(self)
+        Ok(ArgumentWithOptionalValue::new(self))
     }
 
     /// Executes the query and returns its response.
@@ -145,22 +172,24 @@ mod tests {
     }
 
     #[test]
-    fn test_query_binds_arguments() {
+    fn test_query_binds_arguments() -> Result<()> {
         let stream = MockStream::new("test_response".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let _ = query.bind("foo", Some("aaa"), Some("integer")).unwrap()
-            .bind("bar", Some("123"), None).unwrap()
-            .bind("void", None, None).unwrap();
+
+        query.bind("foo")?.with_value("aaa")?
+            .bind("bar")?.with_value(123)?
+            .bind("void")?.without_value()?;
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
-        let expected_buffer = "\u{3}test\u{0}foo\u{0}aaa\u{0}integer\u{0}\
-            \u{3}test\u{0}bar\u{0}123\u{0}\u{0}\
+        let expected_buffer = "\u{3}test\u{0}foo\u{0}aaa\u{0}xs:string\u{0}\
+            \u{3}test\u{0}bar\u{0}123\u{0}xs:int\u{0}\
             \u{3}test\u{0}void\u{0}\u{0}\u{0}".to_owned();
 
         assert_eq!(expected_buffer, actual_buffer);
+        Ok(())
     }
 
     #[test]
@@ -168,7 +197,7 @@ mod tests {
         let connection = Connection::new(FailingStream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let actual_error = query.bind("foo", None, None)
+        let actual_error = query.bind("foo")
             .err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
