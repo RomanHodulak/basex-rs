@@ -1,3 +1,4 @@
+use std::io::Read;
 use crate::{Result, Connection, DatabaseStream, Client};
 use crate::query::argument::{ArgumentWriter, ToQueryArgument};
 use crate::query::response::Response;
@@ -130,17 +131,11 @@ impl<T> Query<T> where T: DatabaseStream {
     }
 
     /// Binds a value to the context. The type will be ignored if the value is `None`.
-    pub fn context(&mut self, value: Option<&str>, value_type: Option<&str>) -> Result<&mut Self> {
+    pub fn context<R: Read>(&mut self, value: &mut R) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Context as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
-        match value {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
-            None => self.connection.skip_arg()?,
-        };
-        match value_type {
-            Some(v) => self.connection.send_arg(&mut v.as_bytes())?,
-            None => self.connection.skip_arg()?,
-        };
+        self.connection.send_arg(value)?;
+        self.connection.send_arg(&mut "document-node()".as_bytes())?;
         self.connection.get_response()?;
         Ok(self)
     }
@@ -163,7 +158,7 @@ mod tests {
     use super::*;
     use crate::tests::{MockStream, FailingStream};
     use crate::ClientError;
-    use std::io::Read;
+    use std::io::{empty, Read};
 
     impl<T> Query<T> where T: DatabaseStream {
         pub(crate) fn into_inner(self) -> Connection<T> {
@@ -209,11 +204,11 @@ mod tests {
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let _ = query.context(Some("aaa"), Some("integer")).unwrap();
+        let _ = query.context(&mut "aaa".as_bytes()).unwrap();
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
-        let expected_buffer = "\u{e}test\u{0}aaa\u{0}integer\u{0}".to_owned();
+        let expected_buffer = "\u{e}test\u{0}aaa\u{0}document-node()\u{0}".to_owned();
 
         assert_eq!(expected_buffer, actual_buffer);
     }
@@ -224,11 +219,11 @@ mod tests {
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let _ = query.context(Some("aaa"), None).unwrap();
+        let _ = query.context(&mut "aaa".as_bytes()).unwrap();
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
-        let expected_buffer = "\u{e}test\u{0}aaa\u{0}\u{0}".to_owned();
+        let expected_buffer = "\u{e}test\u{0}aaa\u{0}document-node()\u{0}".to_owned();
 
         assert_eq!(expected_buffer, actual_buffer);
     }
@@ -239,11 +234,11 @@ mod tests {
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let _ = query.context(None, None).unwrap();
+        let _ = query.context(&mut empty()).unwrap();
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
-        let expected_buffer = "\u{e}test\u{0}\u{0}\u{0}".to_owned();
+        let expected_buffer = "\u{e}test\u{0}\u{0}document-node()\u{0}".to_owned();
 
         assert_eq!(expected_buffer, actual_buffer);
     }
@@ -253,7 +248,7 @@ mod tests {
         let connection = Connection::new(FailingStream);
 
         let mut query = Query::new("test".to_owned(), connection);
-        let actual_error = query.context(None, None)
+        let actual_error = query.context(&mut empty())
             .err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
