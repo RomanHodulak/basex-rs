@@ -17,24 +17,24 @@ enum Command {
 /// [`with_input`]: self::CommandWithOptionalInput::with_input
 /// [`without_input`]: self::CommandWithOptionalInput::without_input
 pub struct CommandWithOptionalInput<'a, T> where T: DatabaseStream {
-    client: &'a mut Client<T>,
+    connection: &'a mut Connection<T>,
 }
 
 impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
-    fn new(client: &'a mut Client<T>) -> Self {
-        Self { client }
+    fn new(connection: &'a mut Connection<T>) -> Self {
+        Self { connection }
     }
 
     /// Sends the input to the command and executes it, returning its response as a string.
     pub fn with_input<R: Read>(self, input: &mut R) -> Result<String> {
-        self.client.connection.send_arg(input)?;
-        self.client.connection.get_response()
+        self.connection.send_arg(input)?;
+        self.connection.get_response()
     }
 
     /// Omits the input from command and executes it, returning its response as a string.
     pub fn without_input(self) -> Result<String> {
-        self.client.connection.skip_arg()?;
-        self.client.connection.get_response()
+        self.connection.skip_arg()?;
+        self.connection.get_response()
     }
 }
 
@@ -166,7 +166,7 @@ impl<T> Client<T> where T: DatabaseStream {
     pub fn create(&mut self, name: &str) -> Result<CommandWithOptionalInput<T>> {
         self.connection.send_cmd(Command::Create as u8)?;
         self.connection.send_arg(&mut name.as_bytes())?;
-        Ok(CommandWithOptionalInput::new(self))
+        Ok(CommandWithOptionalInput::new(&mut self.connection))
     }
 
     /// Replaces resources in the currently opened database, addressed by path, with the XML document specified by
