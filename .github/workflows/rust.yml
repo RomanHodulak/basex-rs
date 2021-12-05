@@ -37,6 +37,6 @@ jobs:
           LLVM_PROFILE_FILE: "your_name-%p-%m.profraw"
           RUSTFLAGS: "-Zinstrument-coverage"
       - name: Run grcov to generate lcov coverage report
-        run: ./grcov . -s ./src --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o lcov.info --ignore tests.rs --ignore '*/.cargo/*' --excl-line '^\s*\}\s*$'
+        run: ./grcov . -s ./src --binary-path ./target/debug/ -t lcov --branch --ignore-not-existing -o lcov.info --ignore tests.rs --ignore '*/.cargo/*' --ignore '*/examples/*' --excl-line '^\s*\}\s*$'
       - name: Upload coverage report
         run: bash <(curl -s https://codecov.io/bash)
