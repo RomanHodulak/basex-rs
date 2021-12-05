@@ -13,8 +13,8 @@ use crate::errors::ClientError::CommandFailed;
 /// # fn main() -> Result<(), ClientError> {
 /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///
-/// let info = client.create("lambada")?.without_input()?;
-/// assert!(info.starts_with("Database 'lambada' created"));
+/// let info = client.create("9f8fe63")?.without_input()?;
+/// assert!(info.starts_with("Database '9f8fe63' created"));
 /// client.store("blob", &mut &[0u8, 1, 2, 3, 4][..])?;
 ///
 /// let mut result: Vec<u8> = vec![];
@@ -24,7 +24,7 @@ use crate::errors::ClientError::CommandFailed;
 /// let (mut client, info) = response.close()?;
 /// assert!(info.starts_with("Query executed in"));
 ///
-/// let (mut client, _) = client.execute("OPEN lambada")?.close()?;
+/// let (mut client, _) = client.execute("OPEN 9f8fe63")?.close()?;
 /// client.execute("CLOSE")?.close()?;
 /// # Ok(())
 /// # }

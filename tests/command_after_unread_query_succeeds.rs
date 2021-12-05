@@ -8,9 +8,9 @@ use std::io::Read;
 fn test_command_after_unread_query_succeeds() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
-    let info = client.create("lambada")?
+    let info = client.create("dda5457")?
         .with_input(&mut "<None><Text></Text><Lala></Lala><Papa></Papa></None>".as_bytes())?;
-    assert!(info.starts_with("Database 'lambada' created"));
+    assert!(info.starts_with("Database 'dda5457' created"));
 
     let query = client.query(&mut "count(/None/*)".as_bytes())?;
     let response = query.execute()?;

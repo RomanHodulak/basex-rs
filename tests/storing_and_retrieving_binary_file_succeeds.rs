@@ -8,8 +8,8 @@ use std::io::Read;
 fn test_storing_and_retrieving_binary_file_succeeds() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
-    let info = client.create("lambada")?.without_input()?;
-    assert!(info.starts_with("Database 'lambada' created"));
+    let info = client.create("9f83d0a")?.without_input()?;
+    assert!(info.starts_with("Database '9f83d0a' created"));
 
     let expected_result = [6u8, 1, 0xFF, 3, 4, 0u8, 6, 5];
     client.store("blob", &mut &expected_result[..])?;

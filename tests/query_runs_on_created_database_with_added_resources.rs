@@ -9,9 +9,9 @@ use std::io::Read;
 fn test_query_runs_on_created_database_with_added_resources() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
-    let info = client.create("lambada")?.without_input()?;
+    let info = client.create("b34db74")?.without_input()?;
 
-    assert!(info.starts_with("Database 'lambada' created"));
+    assert!(info.starts_with("Database 'b34db74' created"));
 
     let test_xml = Asset::get("sleeping.xml").unwrap();
     let info = client.add("sleeping", &mut test_xml.as_ref())?;

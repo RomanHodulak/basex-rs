@@ -51,9 +51,9 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 /// use std::io::Read;
 /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///
-/// let info = client.create("lambada")?
+/// let info = client.create("a45d766")?
 ///     .with_input(&mut "<Root><Text></Text><Lala></Lala><Papa></Papa></Root>".as_bytes())?;
-/// assert!(info.starts_with("Database 'lambada' created"));
+/// assert!(info.starts_with("Database 'a45d766' created"));
 ///
 /// let query = client.query(&mut "count(/Root/*)".as_bytes())?;
 /// let mut result = String::new();
