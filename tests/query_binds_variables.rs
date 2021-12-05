@@ -41,7 +41,7 @@ fn test_query_binds_variables<'a, T: 'a + ToQueryArgument<'a>>(
     };
     let mut actual_result = String::new();
     response.read_to_string(&mut actual_result)?;
-    response.close().unwrap().close().unwrap();
+    response.close()?.close()?;
 
     assert_eq!(expected_result, actual_result);
     Ok(())

@@ -76,6 +76,28 @@ impl<T> Query<T> where T: DatabaseStream {
     }
 
     /// Binds a value to a variable. The type will be ignored if the value is `None`.
+    ///
+    /// # Arguments
+    /// * `name` must be a valid XML name.
+    ///
+    /// # Example
+    /// ```
+    /// # use basex::{Client, ClientError};
+    /// # use std::io::Read;
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// let mut query = client.query("/")?;
+    /// query
+    ///     .bind("boy_sminem")?.with_value(123)?
+    ///     .bind("bogdanoff")?.without_value()?;
+    /// let mut response = query.execute()?;
+    /// let mut result = String::new();
+    /// response.read_to_string(&mut result)?;
+    ///
+    /// println!("{}", result);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T>> {
         self.connection.send_cmd(Command::Bind as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
@@ -131,6 +153,30 @@ impl<T> Query<T> where T: DatabaseStream {
 
     /// Binds a resource to the context. Makes the default context unreachable and replaces whatever current context
     /// is set.
+    ///
+    /// Context allows you to run query on a different data-set than what is in the currently opened database.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use basex::{Client, ClientError};
+    /// # use std::io::Read;
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// let mut response = {
+    ///     let mut query = client.query("count(prdel/*)")?;
+    ///     query.context("<prdel><one/><two/><three/></prdel>")?;
+    ///     query.execute()?
+    /// };
+    /// let mut actual_result = String::new();
+    /// response.read_to_string(&mut actual_result)?;
+    /// response.close()?.close()?;
+    ///
+    /// let expected_result = "3";
+    /// assert_eq!(expected_result, actual_result);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn context<'a, R: AsResource<'a>>(&mut self, value: R) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Context as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
@@ -141,6 +187,24 @@ impl<T> Query<T> where T: DatabaseStream {
     }
 
     /// Checks if the query contains updating expressions.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use basex::{Client, ClientError};
+    /// # fn main() -> Result<(), ClientError> {
+    /// # let client = Client::connect("localhost", 1984, "admin", "admin")?;
+    ///
+    /// let mut query = client.query("replace value of node /None with 1")?;
+    /// assert!(query.updating()?);
+    /// # let client = query.close()?;
+    ///
+    /// let mut query = client.query("count(/None/*)")?;
+    /// assert!(!query.updating()?);
+    /// # query.close()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn updating(&mut self) -> Result<bool> {
         self.connection.send_cmd(Command::Updating as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
