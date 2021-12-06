@@ -1,5 +1,7 @@
+use std::str::FromStr;
 use crate::{Result, Connection, DatabaseStream, Client};
 use crate::query::argument::{ArgumentWriter, ToQueryArgument};
+use crate::query::serializer::Options;
 use crate::query::response::Response;
 use crate::resource::AsResource;
 
@@ -144,11 +146,25 @@ impl<T> Query<T> where T: DatabaseStream {
         self.connection.get_response()
     }
 
-    /// Returns a string with all query serialization parameters, which can e.g. be assigned to the SERIALIZER option.
-    pub fn options(&mut self) -> Result<String> {
+    /// Returns all query serialization options.
+    ///
+    /// # Example
+    /// ```
+    /// # use basex::{Client, ClientError, BooleanAttribute};
+    /// # use std::io::Read;
+    /// # fn main() -> Result<(), ClientError> {
+    /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// let mut query = client.query("/")?;
+    /// let mut options = query.options()?;
+    /// options.insert("indent", BooleanAttribute::no());
+    /// options.save(client)?;
+    /// # Ok(())
+    /// # }
+    pub fn options(&mut self) -> Result<Options> {
         self.connection.send_cmd(Command::Options as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.get_response()
+        let response = self.connection.get_response()?;
+        Ok(Options::from_str(&response).unwrap())
     }
 
     /// Binds a resource to the context. Makes the default context unreachable and replaces whatever current context
@@ -405,14 +421,14 @@ mod tests {
 
     #[test]
     fn test_query_runs_options_command() {
-        let expected_response = "test_response";
+        let expected_response = "ident=no";
         let stream = MockStream::new(expected_response.to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_response = query.options().unwrap();
 
-        assert_eq!(expected_response, actual_response);
+        assert_eq!(expected_response, &actual_response.to_string());
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();

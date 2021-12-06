@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
-use std::io::Error;
+use std::io;
+use std::error;
 use std::string::FromUtf8Error;
 use crate::query::QueryFailed;
 
@@ -12,7 +13,7 @@ use crate::query::QueryFailed;
 #[derive(Debug)]
 pub enum ClientError {
     /// The database connection stream or parsing arguments has resulted in an error.
-    Io(Error),
+    Io(io::Error),
     /// The byte sequence being parsed is not a valid UTF-8 sequence.
     Utf8Parse(FromUtf8Error),
     /// The provided credentials for authorizing are invalid.
@@ -37,8 +38,11 @@ impl Display for ClientError {
     }
 }
 
-impl From<Error> for ClientError {
-    fn from(err: Error) -> ClientError {
+impl error::Error for ClientError {
+}
+
+impl From<io::Error> for ClientError {
+    fn from(err: io::Error) -> ClientError {
         ClientError::Io(err)
     }
 }
@@ -56,13 +60,13 @@ mod tests {
 
     #[test]
     fn test_io_error_formats_as_debug() {
-        let error = ClientError::Io(Error::new(ErrorKind::Other, "test"));
+        let error = ClientError::Io(io::Error::new(ErrorKind::Other, "test"));
         let _ = format!("{:?}", error);
     }
 
     #[test]
     fn test_io_error_formats_as_empty() {
-        let error = ClientError::Io(Error::new(ErrorKind::Other, "test"));
+        let error = ClientError::Io(io::Error::new(ErrorKind::Other, "test"));
         let _ = format!("{}", error);
     }
 
