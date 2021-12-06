@@ -156,6 +156,7 @@ impl<T> Query<T> where T: DatabaseStream {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// let mut query = client.query("/")?;
     /// let mut options = query.options()?;
+    /// let client = query.close()?;
     /// options.insert("indent", BooleanAttribute::no());
     /// options.save(client)?;
     /// # Ok(())
