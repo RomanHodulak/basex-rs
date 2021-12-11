@@ -14,11 +14,7 @@ pub use query::{
     Query,
     ToQueryArgument,
     ArgumentWriter,
-    Options,
-    Attribute,
-    BooleanAttribute,
-    TextualAttribute,
-    ParseError
+    serializer
 };
 pub use stream::DatabaseStream;
 

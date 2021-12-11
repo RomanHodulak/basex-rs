@@ -33,7 +33,7 @@ impl Error for ParseError {
 /// # Example
 ///
 /// ```
-/// # use basex::{Client, Options, ParseError};
+/// # use basex::{Client, serializer::Options, serializer::ParseError};
 /// # use std::str::FromStr;
 /// # fn main() -> std::result::Result<(), std::boxed::Box<dyn std::error::Error>> {
 /// // Connect to the server

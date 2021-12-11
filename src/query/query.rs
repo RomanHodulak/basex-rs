@@ -150,7 +150,7 @@ impl<T> Query<T> where T: DatabaseStream {
     ///
     /// # Example
     /// ```
-    /// # use basex::{Client, ClientError, BooleanAttribute};
+    /// # use basex::{Client, ClientError, serializer::BooleanAttribute};
     /// # use std::io::Read;
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;

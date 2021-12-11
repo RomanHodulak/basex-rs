@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use basex;
-use basex::{Client, ClientError, Options};
+use basex::{Client, ClientError};
+use basex::serializer::Options;
 
 #[test]
 fn test_query_uses_serialization_parameters() -> Result<(), ClientError> {
