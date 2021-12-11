@@ -16,6 +16,16 @@ jobs:
       run: docker-compose up -d && sudo chown -R 1984:1984 docker
     - name: Run tests
       run: cargo test --verbose
+    - run: rustup component add clippy
+    - uses: actions-rs/toolchain@v1
+      with:
+          toolchain: nightly
+          components: clippy
+          override: true
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features
 
   coverage:
     runs-on: ubuntu-latest
