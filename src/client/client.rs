@@ -94,7 +94,6 @@ impl Client<TcpStream> {
 }
 
 impl<T> Client<T> where T: DatabaseStream {
-
     /// Returns new client instance with the given connection bound to it. It assumes that the connection is
     /// authenticated.
     ///
@@ -187,7 +186,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn replace<'a, R: AsResource<'a>>(&mut self, path: &str, input: R) -> Result<String> where R: 'a {
+    pub fn replace<'a>(&mut self, path: &str, input: impl AsResource<'a>) -> Result<String> {
         self.connection.send_cmd(Command::Replace as u8)?;
         self.connection.send_arg(&mut path.as_bytes())?;
         self.connection.send_arg(&mut input.into_read())?;
@@ -213,7 +212,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn store<'a, R: AsResource<'a>>(&mut self, path: &str, input: R) -> Result<String> {
+    pub fn store<'a>(&mut self, path: &str, input: impl AsResource<'a>) -> Result<String> {
         self.connection.send_cmd(Command::Store as u8)?;
         self.connection.send_arg(&mut path.as_bytes())?;
         self.connection.send_arg(&mut input.into_read())?;
@@ -241,7 +240,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn add<'a, R: AsResource<'a>>(&mut self, path: &str, input: R) -> Result<String> where R: 'a {
+    pub fn add<'a>(&mut self, path: &str, input: impl AsResource<'a>) -> Result<String> {
         self.connection.send_cmd(Command::Add as u8)?;
         self.connection.send_arg(&mut path.as_bytes())?;
         self.connection.send_arg(&mut input.into_read())?;
@@ -276,7 +275,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn query<'a, R: AsResource<'a>>(mut self, query: R) -> Result<Query<T>> {
+    pub fn query<'a>(mut self, query: impl AsResource<'a>) -> Result<Query<T>> {
         self.connection.send_cmd(Command::Query as u8)?;
         self.connection.send_arg(&mut query.into_read())?;
         let id = self.connection.get_response()?;
@@ -299,7 +298,7 @@ mod tests {
 
     #[test]
     fn test_database_is_created_with_input() {
-        let mut stream = MockStream::new("test".to_owned());
+        let mut stream = MockStream::new("test\0".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
         let info = client.create("boy_sminem").unwrap()
@@ -311,7 +310,7 @@ mod tests {
 
     #[test]
     fn test_database_is_created_without_input() {
-        let mut stream = MockStream::new("test".to_owned());
+        let mut stream = MockStream::new("test\0".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
         let info = client.create("boy_sminem").unwrap()
@@ -333,7 +332,7 @@ mod tests {
 
     #[test]
     fn test_resource_is_replaced() {
-        let mut stream = MockStream::new("test".to_owned());
+        let mut stream = MockStream::new("test\0".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
         let info = client.replace("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
@@ -354,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_resource_is_stored() {
-        let mut stream = MockStream::new("test".to_owned());
+        let mut stream = MockStream::new("test\0".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
         let info = client.store("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
@@ -375,7 +374,7 @@ mod tests {
 
     #[test]
     fn test_resource_is_added() {
-        let mut stream = MockStream::new("test".to_owned());
+        let mut stream = MockStream::new("test\0".to_owned());
         let mut client = Client::new(Connection::new(stream.try_clone().unwrap()));
 
         let info = client.add("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();

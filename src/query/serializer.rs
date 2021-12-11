@@ -100,7 +100,7 @@ impl ToString for Options {
             if !str.is_empty() {
                 str.push(',');
             }
-            str.push_str(&key);
+            str.push_str(key);
             str.push('=');
             str.push_str( &value.to_string());
         }

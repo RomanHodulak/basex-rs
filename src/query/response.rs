@@ -77,7 +77,7 @@ impl<T> Response<T> where T: DatabaseStream {
 
                 if !self.info_complete {
                     let info_suffix = self.connection.read_string()?;
-                    info.extend(info_suffix.chars());
+                    info.push_str(&info_suffix);
                 }
 
                 Err(ClientError::QueryFailed(QueryFailed::new(info)))

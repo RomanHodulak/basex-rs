@@ -31,7 +31,7 @@ impl<T> Connection<T> where T: DatabaseStream {
     pub fn authenticate(&mut self, user: &str, password: &str) -> Result<&Self> {
         let response = self.read_string()?;
 
-        let challenge: Vec<&str> = response.split(":").collect();
+        let challenge: Vec<&str> = response.split(':').collect();
         let server_name = challenge[0];
         let timestamp = challenge[1];
 
@@ -41,8 +41,8 @@ impl<T> Connection<T> where T: DatabaseStream {
         let auth_string = format!("{}\0{:x}\0", user, second_digest);
         let mut control_byte: [u8; 1] = [0];
 
-        self.stream.write(auth_string.as_bytes())?;
-        self.stream.read(&mut control_byte)?;
+        self.stream.write_all(auth_string.as_bytes())?;
+        self.stream.read_exact(&mut control_byte)?;
 
         if control_byte[0] != 0 {
             return Err(ClientError::Auth);
@@ -55,7 +55,7 @@ impl<T> Connection<T> where T: DatabaseStream {
         let mut raw_string: Vec<u8> = vec![];
         loop {
             let mut buf: [u8; 1] = [0];
-            self.stream.read(&mut buf)?;
+            self.stream.read_exact(&mut buf)?;
 
             if buf[0] == 0 {
                 break;
@@ -67,7 +67,7 @@ impl<T> Connection<T> where T: DatabaseStream {
     }
 
     pub(crate) fn send_cmd(&mut self, code: u8) -> Result<&mut Self> {
-        self.stream.write(&[code])?;
+        self.stream.write_all(&[code])?;
 
         Ok(self)
     }
@@ -79,7 +79,7 @@ impl<T> Connection<T> where T: DatabaseStream {
     }
 
     pub(crate) fn skip_arg(&mut self) -> Result<&mut Self> {
-        self.stream.write(&[0])?;
+        self.stream.write_all(&[0])?;
 
         Ok(self)
     }
@@ -100,7 +100,7 @@ impl<T> Connection<T> where T: DatabaseStream {
     /// Reads return code and decodes it to TRUE on success or FALSE on error.
     pub(crate) fn is_ok(&mut self) -> Result<bool> {
         let mut buf: [u8; 1] = [0];
-        self.stream.read(&mut buf)?;
+        self.stream.read_exact(&mut buf)?;
 
         Ok(buf[0] == 0)
     }
@@ -181,7 +181,7 @@ mod tests {
     #[test]
     fn test_connection_gets_response() {
         let expected_response = "test_response";
-        let stream = MockStream::new(expected_response.to_owned());
+        let stream = MockStream::new(format!("{}\0", expected_response));
         let mut connection = Connection::new(stream);
         let actual_response = connection.get_response().unwrap();
 
@@ -190,8 +190,7 @@ mod tests {
 
     #[test]
     fn test_connection_gets_response_on_failed_command() {
-        let expected_response = "test_error\0\u{1}";
-        let stream = MockStream::new(expected_response.to_owned());
+        let stream = MockStream::new("test_error\0\u{1}".to_owned());
         let mut connection = Connection::new(stream);
         let actual_error = connection.get_response().expect_err("Operation must fail");
 

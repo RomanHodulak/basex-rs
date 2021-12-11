@@ -1,4 +1,6 @@
 pub mod serializer;
+
+#[allow(clippy::module_inception)]
 mod query;
 mod response;
 mod errors;

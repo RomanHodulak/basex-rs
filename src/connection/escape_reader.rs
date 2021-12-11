@@ -26,8 +26,8 @@ impl<R> Read for EscapeReader<'_, R> where R:Read {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let accumulator_length = min(buf.len(), self.accumulator.len());
 
-        for i in 0..accumulator_length {
-            buf[i] = self.accumulator.pop().unwrap();
+        for buf in buf.iter_mut().take(accumulator_length) {
+            *buf = self.accumulator.pop().unwrap();
         }
 
         let stream_length = self.inner.read(&mut buf[accumulator_length..])?;

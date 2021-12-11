@@ -194,7 +194,7 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn context<'a, R: AsResource<'a>>(&mut self, value: R) -> Result<&mut Self> {
+    pub fn context<'a>(&mut self, value: impl AsResource<'a>) -> Result<&mut Self> {
         self.connection.send_cmd(Command::Context as u8)?;
         self.connection.send_arg(&mut self.id.as_bytes())?;
         self.connection.send_arg(&mut value.into_read())?;
@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_query_binds_arguments() -> Result<()> {
-        let stream = MockStream::new("test_response".to_owned());
+        let stream = MockStream::new("\0\0\0\0\0".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn test_query_binds_value_to_context() {
-        let stream = MockStream::new("test_response".to_owned());
+        let stream = MockStream::new("\0\0".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn test_query_binds_value_to_context_with_empty_type() {
-        let stream = MockStream::new("test_response".to_owned());
+        let stream = MockStream::new("\0\0".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -311,7 +311,7 @@ mod tests {
 
     #[test]
     fn test_query_binds_empty_value_to_context() {
-        let stream = MockStream::new("test_response".to_owned());
+        let stream = MockStream::new("\0\0".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -368,7 +368,7 @@ mod tests {
 
     #[test]
     fn test_query_runs_updating_command() {
-        let stream = MockStream::new("true".to_owned());
+        let stream = MockStream::new("true\0".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -385,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_query_runs_non_updating_command() {
-        let stream = MockStream::new("false".to_owned());
+        let stream = MockStream::new("false\0".to_owned());
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -423,7 +423,7 @@ mod tests {
     #[test]
     fn test_query_runs_options_command() {
         let expected_response = "ident=no";
-        let stream = MockStream::new(expected_response.to_owned());
+        let stream = MockStream::new(format!("{}\0\0", expected_response));
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -451,7 +451,7 @@ mod tests {
     #[test]
     fn test_query_runs_info_command() {
         let expected_response = "test_response";
-        let stream = MockStream::new(expected_response.to_owned());
+        let stream = MockStream::new(format!("{}\0\0", expected_response));
         let connection = Connection::new(stream);
 
         let mut query = Query::new("test".to_owned(), connection);
@@ -478,7 +478,7 @@ mod tests {
 
     #[test]
     fn test_query_closes() {
-        let expected_response = "test_response";
+        let expected_response = "test_response\0";
         let stream = MockStream::new(expected_response.to_owned());
         let connection = Connection::new(stream);
 

@@ -24,7 +24,7 @@ impl QueryFailed {
         let line = usize::from_str(line).unwrap();
 
         let position = &raw[line_separator + 1..line_stop];
-        let position = usize::from_str(&position).unwrap();
+        let position = usize::from_str(position).unwrap();
 
         let message = raw[code_stop + 2..].to_owned();
         let file = raw[11..line_start].to_owned();
