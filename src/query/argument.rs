@@ -1,5 +1,6 @@
 use std::net::IpAddr;
 use crate::{Connection, DatabaseStream, Result};
+use crate::connection::Authenticated;
 use crate::resource::AsResource;
 
 /// Writes argument values using a [`Connection`].
@@ -12,7 +13,7 @@ use crate::resource::AsResource;
 /// }
 /// ```
 /// [`Connection`]: crate::connection::Connection
-pub struct ArgumentWriter<'a, T: DatabaseStream>(pub &'a mut Connection<T>);
+pub struct ArgumentWriter<'a, T: DatabaseStream>(pub &'a mut Connection<T, Authenticated>);
 
 impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
     /// Writes bytes from the given reader as the argument's value.
@@ -207,7 +208,6 @@ impl<'a> ToQueryArgument<'a> for IpAddr {
 #[cfg(test)]
 mod tests {
     use test_case::test_case;
-    use crate::tests::MockStream;
     use super::*;
 
     #[test_case(IpAddr::V4("125.0.0.1".parse().unwrap()), "125.0.0.1\0", "xs:string")]
@@ -231,8 +231,7 @@ mod tests {
         expected_stream: &str,
         expected_type: &str
     ) {
-        let stream = MockStream::new("".to_owned());
-        let mut connection = Connection::new(stream);
+        let mut connection = Connection::from_str("");
         let mut writer = ArgumentWriter(&mut connection);
         value.write_xquery(&mut writer).unwrap();
         let actual_stream = connection.into_inner().to_string();

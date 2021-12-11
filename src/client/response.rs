@@ -1,5 +1,6 @@
 use crate::{Connection, DatabaseStream, Result, Client};
 use std::io::Read;
+use crate::connection::Authenticated;
 use crate::errors::ClientError::CommandFailed;
 
 /// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
@@ -32,18 +33,21 @@ use crate::errors::ClientError::CommandFailed;
 ///
 /// [`Read`]: std::io::Read
 pub struct Response<T> where T: DatabaseStream {
-    connection: Connection<T>,
+    connection: Connection<T, Authenticated>,
     info_prefix: Option<Vec<u8>>,
     info_complete: bool,
     is_ok: bool,
 }
 
 impl<T> Response<T> where T: DatabaseStream {
-    pub(crate) fn new(connection: Connection<T>) -> Self {
+    pub(crate) fn new(connection: Connection<T, Authenticated>) -> Self {
         Self { connection, info_prefix: None, info_complete: false, is_ok: false }
     }
 
     /// Reads info and returns back client.
+    ///
+    /// # Panics
+    /// Panics when the stream ends before result is fully streamed.
     ///
     /// # Example
     /// ```
@@ -134,13 +138,11 @@ impl<T> Read for Response<T> where T: DatabaseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::MockStream;
     use crate::ClientError;
 
     #[test]
     fn test_closing_returns_info() {
-        let stream = MockStream::new("result\0info\0\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("result\0info\0\0");
         let response = Response::new(connection);
         let (_, actual_info) = response.close().unwrap();
         let expected_info = "info";
@@ -150,8 +152,7 @@ mod tests {
 
     #[test]
     fn test_closing_returns_info_on_multiple_read_calls() {
-        let stream = MockStream::new("result\0".to_owned() + &"info".repeat(20) + "\0\0");
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("result\0".to_owned() + &"info".repeat(20) + "\0\0");
         let response = Response::new(connection);
         let (_, actual_info) = response.close().unwrap();
         let expected_info = "info".repeat(20);
@@ -161,8 +162,7 @@ mod tests {
 
     #[test]
     fn test_reading_result_from_response() {
-        let stream = MockStream::new("result\0info\0\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("result\0info\0\0".to_owned());
         let mut response = Response::new(connection);
         let mut actual_response = String::new();
         response.read_to_string(&mut actual_response).unwrap();
@@ -173,8 +173,7 @@ mod tests {
 
     #[test]
     fn test_reading_result_from_response_on_multiple_read_calls() {
-        let stream = MockStream::new("result".repeat(10) + "\0info\0\0");
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("result".repeat(10) + "\0info\0\0");
         let mut response = Response::new(connection);
         let mut actual_response = String::new();
         response.read_to_string(&mut actual_response).unwrap();
@@ -185,8 +184,7 @@ mod tests {
 
     #[test]
     fn test_reading_result_from_response_with_some_escape_bytes() {
-        let stream = MockStream::from_bytes(&[0xFFu8, 0, 1, 6, 9, 0xFF, 0xFF, 3, 0, 0]);
-        let connection = Connection::new(stream);
+        let connection = Connection::from_bytes(&[0xFFu8, 0, 1, 6, 9, 0xFF, 0xFF, 3, 0, 0]);
         let mut response = Response::new(connection);
         let mut actual_response: Vec<u8> = vec![];
         response.read_to_end(&mut actual_response).unwrap();
@@ -199,8 +197,7 @@ mod tests {
     fn test_reading_result_from_response_with_only_escape_bytes() {
         let mut bytes = [0xFFu8, 0].repeat(10);
         bytes.extend([0, 0]);
-        let stream = MockStream::from_bytes(&bytes);
-        let connection = Connection::new(stream);
+        let connection = Connection::from_bytes(&bytes);
         let mut response = Response::new(connection);
         let mut actual_response: Vec<u8> = vec![];
         response.read_to_end(&mut actual_response).unwrap();
@@ -211,8 +208,7 @@ mod tests {
 
     #[test]
     fn test_reading_error_from_response() {
-        let stream = MockStream::new("partial_result\0test_error\0\u{1}".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("partial_result\0test_error\0\u{1}");
         let response = Response::new(connection);
         let actual_error = response.close().err().unwrap();
 
@@ -225,8 +221,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_reading_panics_on_invalid_status_byte() {
-        let stream = MockStream::new("partial_result\0test_error\0\u{2}".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("partial_result\0test_error\0\u{2}");
 
         let _ = Response::new(connection).read(&mut [0u8; 27]);
     }
@@ -234,8 +229,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_reading_panics_on_incomplete_result() {
-        let stream = MockStream::new("partial_result".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("partial_result");
 
         let _ = Response::new(connection).close();
     }

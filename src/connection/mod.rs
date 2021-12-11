@@ -3,3 +3,5 @@ mod connection;
 mod escape_reader;
 
 pub use self::connection::Connection;
+pub use self::connection::Authenticated;
+pub use self::connection::Unauthenticated;

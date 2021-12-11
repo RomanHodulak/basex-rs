@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use crate::{Result, Connection, DatabaseStream, Client};
+use crate::connection::Authenticated;
 use crate::query::argument::{ArgumentWriter, ToQueryArgument};
 use crate::query::serializer::Options;
 use crate::query::response::Response;
@@ -60,12 +61,12 @@ impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
 /// Once happy with the arguments bound or context set, the Query can be executed or analysed.
 pub struct Query<T> where T: DatabaseStream {
     id: String,
-    connection: Connection<T>,
+    connection: Connection<T, Authenticated>,
 }
 
 impl<T> Query<T> where T: DatabaseStream {
 
-    pub(crate) fn new(id: String, connection: Connection<T>) -> Self {
+    pub(crate) fn new(id: String, connection: Connection<T, Authenticated>) -> Self {
         Self { id, connection }
     }
 
@@ -205,8 +206,10 @@ impl<T> Query<T> where T: DatabaseStream {
 
     /// Checks if the query contains updating expressions.
     ///
-    /// # Example
+    /// # Panics
+    /// Panics when the response contains non-boolean value.
     ///
+    /// # Example
     /// ```
     /// # use basex::{Client, ClientError};
     /// # fn main() -> Result<(), ClientError> {
@@ -237,20 +240,18 @@ impl<T> Query<T> where T: DatabaseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{MockStream, FailingStream};
     use crate::ClientError;
     use std::io::{empty, Read};
 
     impl<T> Query<T> where T: DatabaseStream {
-        pub(crate) fn into_inner(self) -> Connection<T> {
+        pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
             self.connection
         }
     }
 
     #[test]
     fn test_query_binds_arguments() -> Result<()> {
-        let stream = MockStream::new("\0\0\0\0\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("\0\0\0\0\0");
 
         let mut query = Query::new("test".to_owned(), connection);
 
@@ -270,7 +271,7 @@ mod tests {
 
     #[test]
     fn test_query_fails_to_bind_argument_with_failing_stream() {
-        let connection = Connection::new(FailingStream);
+        let connection = Connection::failing();
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_error = query.bind("foo")
@@ -281,8 +282,7 @@ mod tests {
 
     #[test]
     fn test_query_binds_value_to_context() {
-        let stream = MockStream::new("\0\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("\0\0");
 
         let mut query = Query::new("test".to_owned(), connection);
         let _ = query.context("aaa").unwrap();
@@ -296,8 +296,7 @@ mod tests {
 
     #[test]
     fn test_query_binds_value_to_context_with_empty_type() {
-        let stream = MockStream::new("\0\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("\0\0");
 
         let mut query = Query::new("test".to_owned(), connection);
         let _ = query.context("aaa").unwrap();
@@ -311,8 +310,7 @@ mod tests {
 
     #[test]
     fn test_query_binds_empty_value_to_context() {
-        let stream = MockStream::new("\0\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("\0\0");
 
         let mut query = Query::new("test".to_owned(), connection);
         let _ = query.context(&mut empty()).unwrap();
@@ -326,7 +324,7 @@ mod tests {
 
     #[test]
     fn test_query_fails_to_bind_context_with_failing_stream() {
-        let connection = Connection::new(FailingStream);
+        let connection = Connection::failing();
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_error = query.context(&mut empty())
@@ -338,8 +336,7 @@ mod tests {
     #[test]
     fn test_query_executes() {
         let expected_response = "test_response";
-        let stream = MockStream::new(expected_response.to_owned() + "\0");
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str(expected_response.to_owned() + "\0");
 
         let query = Query::new("test".to_owned(), connection);
         let mut actual_response = String::new();
@@ -358,7 +355,7 @@ mod tests {
 
     #[test]
     fn test_query_fails_to_execute_with_failing_stream() {
-        let connection = Connection::new(FailingStream);
+        let connection = Connection::failing();
 
         let query = Query::new("test".to_owned(), connection);
         let actual_error = query.execute().err().expect("Operation must fail");
@@ -368,8 +365,7 @@ mod tests {
 
     #[test]
     fn test_query_runs_updating_command() {
-        let stream = MockStream::new("true\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("true\0");
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_response = query.updating().unwrap();
@@ -385,8 +381,7 @@ mod tests {
 
     #[test]
     fn test_query_runs_non_updating_command() {
-        let stream = MockStream::new("false\0".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("false\0");
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_response = query.updating().unwrap();
@@ -403,8 +398,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_query_panics_updating_command_response_is_not_bool() {
-        let stream = MockStream::new("test_response".to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str("test_response");
 
         let mut query = Query::new("test".to_owned(), connection);
         let _ = query.updating().unwrap();
@@ -412,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_query_fails_to_run_updating_command_with_failing_stream() {
-        let connection = Connection::new(FailingStream);
+        let connection = Connection::failing();
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_error = query.updating().expect_err("Operation must fail");
@@ -423,8 +417,7 @@ mod tests {
     #[test]
     fn test_query_runs_options_command() {
         let expected_response = "ident=no";
-        let stream = MockStream::new(format!("{}\0\0", expected_response));
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str(&format!("{}\0\0", expected_response));
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_response = query.options().unwrap();
@@ -440,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_query_fails_to_run_options_command_with_failing_stream() {
-        let connection = Connection::new(FailingStream);
+        let connection = Connection::failing();
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_error = query.options().expect_err("Operation must fail");
@@ -451,8 +444,7 @@ mod tests {
     #[test]
     fn test_query_runs_info_command() {
         let expected_response = "test_response";
-        let stream = MockStream::new(format!("{}\0\0", expected_response));
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str(&format!("{}\0\0", expected_response));
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_response = query.info().unwrap();
@@ -468,7 +460,7 @@ mod tests {
 
     #[test]
     fn test_query_fails_to_run_info_command_with_failing_stream() {
-        let connection = Connection::new(FailingStream);
+        let connection = Connection::failing();
 
         let mut query = Query::new("test".to_owned(), connection);
         let actual_error = query.info().expect_err("Operation must fail");
@@ -479,8 +471,7 @@ mod tests {
     #[test]
     fn test_query_closes() {
         let expected_response = "test_response\0";
-        let stream = MockStream::new(expected_response.to_owned());
-        let connection = Connection::new(stream);
+        let connection = Connection::from_str(expected_response);
 
         let query = Query::new("test".to_owned(), connection);
         let client = query.close().unwrap();
@@ -494,7 +485,7 @@ mod tests {
 
     #[test]
     fn test_query_fails_to_close_with_failing_stream() {
-        let connection = Connection::new(FailingStream);
+        let connection = Connection::failing();
 
         let query = Query::new("test".to_owned(), connection);
         let actual_error = query.close().err().expect("Operation must fail");
