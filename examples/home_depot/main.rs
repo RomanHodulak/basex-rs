@@ -23,7 +23,7 @@ fn main() -> Result<(), ClientError> {
     let info = client.add("warehouse", &mut warehouse)?;
     assert!(info.starts_with("Resource(s) added"));
 
-    let query = client.query(&mut xquery)?;
+    let query = client.query(&mut xquery)?.without_info()?;
     let mut result = String::new();
     let mut response = query.execute()?;
     response.read_to_string(&mut result)?;

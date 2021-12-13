@@ -21,7 +21,7 @@ fn test_query_runs_on_created_database_with_added_resources() -> Result<(), Clie
     let info = client.add("powder", &mut test_xml.as_ref())?;
     assert!(info.starts_with("Resource(s) added"));
 
-    let query = client.query("count(//artikl)")?;
+    let query = client.query("count(//artikl)")?.without_info()?;
     let mut result = String::new();
     let mut response = query.execute()?;
     response.read_to_string(&mut result)?;

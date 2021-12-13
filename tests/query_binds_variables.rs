@@ -35,7 +35,7 @@ fn test_query_binds_variables<'a, T: 'a + ToQueryArgument<'a>>(
     let mut response = {
         let mut query = client.query(
             &mut format!("declare variable $prdel as {} external; $prdel", expected_type).as_bytes()
-        )?;
+        )?.without_info()?;
         query.bind("prdel")?.with_value(value)?;
         query.execute()?
     };

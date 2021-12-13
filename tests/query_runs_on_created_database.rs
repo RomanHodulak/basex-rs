@@ -10,7 +10,7 @@ fn test_query_runs_on_created_database() -> Result<(), ClientError> {
         .with_input("<None><Text></Text><Lala></Lala><Papa></Papa></None>")?;
     assert!(info.starts_with("Database '918f6e1' created"));
 
-    let query = client.query("count(/None/*)")?;
+    let query = client.query("count(/None/*)")?.without_info()?;
     let mut result = String::new();
     let mut response = query.execute()?;
     response.read_to_string(&mut result)?;

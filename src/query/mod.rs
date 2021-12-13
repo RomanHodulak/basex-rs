@@ -8,6 +8,8 @@ mod errors;
 mod argument;
 
 pub use self::query::Query;
+pub use self::query::WithInfo;
+pub use self::query::WithoutInfo;
 pub use self::errors::QueryFailed;
 pub use self::response::Response;
 pub use self::argument::ToQueryArgument;

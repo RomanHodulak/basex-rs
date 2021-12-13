@@ -21,7 +21,7 @@ fn test_query_creates_xml_on_created_database_with_added_resources() -> Result<(
     assert!(info.starts_with("Resource(s) added"));
 
     let xquery = Asset::get("harvester.xq").unwrap();
-    let query = client.query(&mut xquery.as_ref())?;
+    let query = client.query(&mut xquery.as_ref())?.without_info()?;
     let mut actual_result = String::new();
     let mut response = query.execute()?;
     response.read_to_string(&mut actual_result)?;

@@ -18,7 +18,7 @@ fn test_query_uses_serialization_parameters() -> Result<(), ClientError> {
         .unwrap()
         .save(client)?;
 
-    let mut query = client.query("count(/None/*)")?;
+    let mut query = client.query("count(/None/*)")?.without_info()?;
     let actual_parameters = query.options()?;
     query.close()?;
 
@@ -37,7 +37,7 @@ fn test_query_has_no_serialization_parameters_by_default() -> Result<(), ClientE
     assert!(info.starts_with(&format!("Database '{}' created", database_name)));
 
     let expected_parameters = "";
-    let mut query = client.query("count(/None/*)")?;
+    let mut query = client.query("count(/None/*)")?.without_info()?;
     let actual_parameters = query.options()?;
     query.close()?;
 

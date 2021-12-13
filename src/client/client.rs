@@ -1,8 +1,10 @@
 use std::borrow::{Borrow, BorrowMut};
+use std::marker::PhantomData;
 use crate::{Result, Connection, Query, DatabaseStream};
 use std::net::TcpStream;
 use crate::client::Response;
 use crate::connection::Authenticated;
+use crate::query::{WithInfo, WithoutInfo};
 use crate::resource::AsResource;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
@@ -57,7 +59,7 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 ///     .with_input("<Root><Text></Text><Lala></Lala><Papa></Papa></Root>")?;
 /// assert!(info.starts_with("Database 'a45d766' created"));
 ///
-/// let query = client.query("count(/Root/*)")?;
+/// let query = client.query("count(/Root/*)")?.without_info()?;
 /// let mut result = String::new();
 /// let mut response = query.execute()?;
 /// response.read_to_string(&mut result);
@@ -266,7 +268,7 @@ impl<T> Client<T> where T: DatabaseStream {
     ///     .with_input("<polygon><line></line><line></line><line></line></polygon>")?;
     /// assert!(info.starts_with("Database 'triangle' created"));
     ///
-    /// let query = client.query("count(/polygon/*)")?;
+    /// let query = client.query("count(/polygon/*)")?.without_info()?;
     /// let mut result = String::new();
     /// let mut response = query.execute()?;
     /// response.read_to_string(&mut result)?;
@@ -277,12 +279,8 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn query<'a>(mut self, query: impl AsResource<'a>) -> Result<Query<T>> {
-        self.connection.send_cmd(Command::Query as u8)?;
-        self.connection.send_arg(&mut query.into_read())?;
-        let id = self.connection.get_response()?;
-
-        Ok(Query::new(id, self))
+    pub fn query<'a, R: AsResource<'a>>(self, query: R) -> Result<QueryWithOptionalInfo<'a, T, R>> {
+        Ok(QueryWithOptionalInfo::new(self, query))
     }
 }
 
@@ -303,6 +301,42 @@ impl<T: DatabaseStream> Borrow<Connection<T, Authenticated>> for Client<T> {
 impl<T: DatabaseStream> BorrowMut<Connection<T, Authenticated>> for Client<T> {
     fn borrow_mut(&mut self) -> &mut Connection<T, Authenticated> {
         &mut self.connection
+    }
+}
+
+pub struct QueryWithOptionalInfo<'a, T, R> where T: DatabaseStream, R: AsResource<'a> {
+    phantom: PhantomData<&'a ()>,
+    client: Client<T>,
+    query: R,
+}
+
+impl<'a, T, R> QueryWithOptionalInfo<'a, T, R> where T: DatabaseStream, R: AsResource<'a> {
+    fn new(client: Client<T>, query: R) -> Self {
+        Self {
+            phantom: Default::default(),
+            client,
+            query,
+        }
+    }
+
+    pub fn with_info(self) -> Result<Query<T, WithInfo>> {
+        let (mut client, _) = self.client.execute("SET QUERYINFO true")?
+            .close()?;
+        let id = Self::query(&mut client, self.query)?;
+        Ok(Query::with_info(id, client))
+    }
+
+    pub fn without_info(self) -> Result<Query<T, WithoutInfo>> {
+        let (mut client, _) = self.client.execute("SET QUERYINFO false")?
+            .close()?;
+        let id = Self::query(&mut client, self.query)?;
+        Ok(Query::without_info(id, client))
+    }
+
+    fn query(client: &mut Client<T>, query: R) -> Result<String> {
+        client.connection.send_cmd(Command::Query as u8)?;
+        client.connection.send_arg(&mut query.into_read())?;
+        client.connection.get_response()
     }
 }
 

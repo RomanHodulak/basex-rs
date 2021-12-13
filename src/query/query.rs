@@ -1,4 +1,5 @@
-use std::borrow::BorrowMut;
+use std::borrow::{Borrow, BorrowMut};
+use std::marker::PhantomData;
 use std::str::FromStr;
 use crate::{Result, Connection, DatabaseStream, Client};
 use crate::connection::Authenticated;
@@ -7,6 +8,9 @@ use crate::query::argument::{ArgumentWriter, ToQueryArgument};
 use crate::query::serializer::Options;
 use crate::query::response::Response;
 use crate::resource::AsResource;
+
+pub struct WithInfo;
+pub struct WithoutInfo;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
 enum Command {
@@ -24,19 +28,19 @@ enum Command {
 ///
 /// [`with_input`]: self::CommandWithOptionalInput::with_input
 /// [`without_input`]: self::CommandWithOptionalInput::without_input
-pub struct ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
-    query: &'a mut Query<T>,
+pub struct ArgumentWithOptionalValue<'a, T, HasInfo> where T: DatabaseStream {
+    query: &'a mut Query<T, HasInfo>,
 }
 
-impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
-    pub(crate) fn new(query: &'a mut Query<T>) -> Self {
+impl<'a, T, HasInfo> ArgumentWithOptionalValue<'a, T, HasInfo> where T: DatabaseStream {
+    pub(crate) fn new(query: &'a mut Query<T, HasInfo>) -> Self {
         Self { query }
     }
 
     /// Sends the value to the argument, returning back the mutable reference to [`Query`].
     ///
     /// [`Query`]: self::Query
-    pub fn with_value<'b, A: ToQueryArgument<'b>>(self, value: A) -> Result<&'a mut Query<T>> {
+    pub fn with_value<'b, A: ToQueryArgument<'b>>(self, value: A) -> Result<&'a mut Query<T, HasInfo>> {
         value.write_xquery(&mut ArgumentWriter(self.query.connection()))?;
         self.query.connection().send_arg(&mut A::xquery_type().as_bytes())?;
         self.query.connection().get_response()?;
@@ -46,7 +50,7 @@ impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
     /// Omits the value from the argument, returning back the mutable reference to [`Query`].
     ///
     /// [`Query`]: self::Query
-    pub fn without_value(self) -> Result<&'a mut Query<T>> {
+    pub fn without_value(self) -> Result<&'a mut Query<T, HasInfo>> {
         self.query.connection().skip_arg()?;
         self.query.connection().skip_arg()?;
         self.query.connection().get_response()?;
@@ -61,21 +65,13 @@ impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
 /// for it.
 ///
 /// Once happy with the arguments bound or context set, the Query can be executed or analysed.
-pub struct Query<T> where T: DatabaseStream {
+pub struct Query<T, HasInfo=WithoutInfo> where T: DatabaseStream {
+    has_info: PhantomData<HasInfo>,
     id: String,
     client: Client<T>,
 }
 
-impl<T> Query<T> where T: DatabaseStream {
-    /// Creates a new instance of query.
-    ///
-    /// Assumes that the query is already created on the BaseX server. This instance only attaches to an existing
-    /// query on the database. One property is that things like bound variables are persisted. You could actually create
-    /// an instance of Query after it has several bound variables or even changes context.
-    pub(crate) fn new(id: String, client: Client<T>) -> Self {
-        Self { id, client }
-    }
-
+impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
     /// Closes and unregisters the query with the specified id.
     pub fn close(mut self) -> Result<Client<T>> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
@@ -96,7 +92,7 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # use std::io::Read;
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    /// let mut query = client.query("/")?;
+    /// let mut query = client.query("/")?.without_info()?;
     /// query
     ///     .bind("boy_sminem")?.with_value(123)?
     ///     .bind("bogdanoff")?.without_value()?;
@@ -108,7 +104,7 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T>> {
+    pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T, HasInfo>> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
         connection.send_cmd(Command::Bind as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
@@ -132,7 +128,7 @@ impl<T> Query<T> where T: DatabaseStream {
     ///     let $angle := 2 * math:pi() * number($i div $points)
     ///     return <point x=\"{round(math:cos($angle), 8)}\" y=\"{round(math:sin($angle), 8)}\"></point>
     ///   }
-    /// </polygon>")?;
+    /// </polygon>")?.without_info()?;
     ///
     /// let mut result = String::new();
     /// let mut response = query.execute()?;
@@ -142,19 +138,11 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn execute(mut self) -> Result<Response<T>> {
+    pub fn execute(mut self) -> Result<Response<T, HasInfo>> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
         connection.send_cmd(Command::Execute as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
-        Ok(Response::new(self.id, self.client))
-    }
-
-    /// Returns a string with query compilation and profiling info.
-    pub fn info(&mut self) -> Result<impl Info> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
-        connection.send_cmd(Command::Info as u8)?;
-        connection.send_arg(&mut self.id.as_bytes())?;
-        Ok(RawInfo::new(self.connection().get_response()?))
+        Ok(Response::new(self))
     }
 
     /// Returns all query serialization options.
@@ -165,7 +153,7 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # use std::io::Read;
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
-    /// let mut query = client.query("/")?;
+    /// let mut query = client.query("/")?.without_info()?;
     /// let mut options = query.options()?;
     /// let client = query.close()?;
     /// options.insert("indent", BooleanAttribute::no());
@@ -193,7 +181,7 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// let mut response = {
-    ///     let mut query = client.query("count(prdel/*)")?;
+    ///     let mut query = client.query("count(prdel/*)")?.without_info()?;
     ///     query.context("<prdel><one/><two/><three/></prdel>")?;
     ///     query.execute()?
     /// };
@@ -227,11 +215,11 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # fn main() -> Result<(), ClientError> {
     /// # let client = Client::connect("localhost", 1984, "admin", "admin")?;
     ///
-    /// let mut query = client.query("replace value of node /None with 1")?;
+    /// let mut query = client.query("replace value of node /None with 1")?.without_info()?;
     /// assert!(query.updating()?);
     /// # let client = query.close()?;
     ///
-    /// let mut query = client.query("count(/None/*)")?;
+    /// let mut query = client.query("count(/None/*)")?.without_info()?;
     /// assert!(!query.updating()?);
     /// # query.close()?;
     /// # Ok(())
@@ -254,24 +242,93 @@ impl<T> Query<T> where T: DatabaseStream {
     }
 }
 
+impl<T> Query<T, WithoutInfo> where T: DatabaseStream {
+    /// Creates a new instance of query.
+    ///
+    /// Assumes that the query is already created on the BaseX server. This instance only attaches to an existing
+    /// query on the database. One property is that things like bound variables are persisted. You could actually create
+    /// an instance of Query after it has several bound variables or even changes context.
+    pub(crate) fn without_info(id: String, client: Client<T>) -> Query<T, WithoutInfo> {
+        Self { has_info: Default::default(), id, client }
+    }
+}
+
+impl<T> Query<T, WithInfo> where T: DatabaseStream {
+    /// Creates a new instance of query.
+    ///
+    /// Assumes that the query is already created on the BaseX server. This instance only attaches to an existing
+    /// query on the database. One property is that things like bound variables are persisted. You could actually create
+    /// an instance of Query after it has several bound variables or even changes context.
+    pub(crate) fn with_info(id: String, client: Client<T>) -> Query<T, WithInfo> {
+        Self { has_info: Default::default(), id, client }
+    }
+
+    /// Returns a string with query compilation and profiling info.
+    pub fn info(&mut self) -> Result<impl Info> {
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Info as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
+        Ok(RawInfo::new(self.connection().get_response()?))
+    }
+}
+
+impl<T, HasInfo> Borrow<Client<T>> for Query<T, HasInfo> where T: DatabaseStream {
+    fn borrow(&self) -> &Client<T> {
+        &self.client
+    }
+}
+
+impl<T, HasInfo> BorrowMut<Client<T>> for Query<T, HasInfo> where T: DatabaseStream {
+    fn borrow_mut(&mut self) -> &mut Client<T> {
+        &mut self.client
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{assert_query_info, ClientError};
     use crate::query::analysis::tests::QUERY_INFO;
     use std::io::{empty, Read};
+    use crate::tests::FailingStream;
 
-    impl<T> Query<T> where T: DatabaseStream {
+    impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
         pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
             self.client.into_inner()
         }
     }
 
     #[test]
+    fn test_with_info_formats_as_debug() {
+        format!("{:?}", WithInfo);
+    }
+
+    #[test]
+    fn test_without_info_formats_as_debug() {
+        format!("{:?}", WithoutInfo);
+    }
+
+    #[test]
+    fn test_formats_as_debug() {
+        format!(
+            "{:?}",
+            Query::with_info("".to_owned(), Client::new(Connection::failing()))
+        );
+    }
+
+    #[test]
+    fn test_borrows_as_client() {
+        let _: &Client<FailingStream> = Query::with_info(
+            "".to_owned(),
+            Client::new(Connection::failing())
+        ).borrow();
+    }
+
+    #[test]
     fn test_query_binds_arguments() -> Result<()> {
         let connection = Connection::from_str("\0\0\0\0\0");
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
 
         query.bind("foo")?.with_value("aaa")?
             .bind("bar")?.with_value(123)?
@@ -291,7 +348,7 @@ mod tests {
     fn test_query_fails_to_bind_argument_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_error = query.bind("foo")
             .err().expect("Operation must fail");
 
@@ -302,7 +359,7 @@ mod tests {
     fn test_query_binds_value_to_context() {
         let connection = Connection::from_str("\0\0");
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let _ = query.context("aaa").unwrap();
 
         let stream = query.into_inner().into_inner();
@@ -316,7 +373,7 @@ mod tests {
     fn test_query_binds_value_to_context_with_empty_type() {
         let connection = Connection::from_str("\0\0");
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let _ = query.context("aaa").unwrap();
 
         let stream = query.into_inner().into_inner();
@@ -330,7 +387,7 @@ mod tests {
     fn test_query_binds_empty_value_to_context() {
         let connection = Connection::from_str("\0\0");
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let _ = query.context(&mut empty()).unwrap();
 
         let stream = query.into_inner().into_inner();
@@ -344,7 +401,7 @@ mod tests {
     fn test_query_fails_to_bind_context_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_error = query.context(&mut empty())
             .err().expect("Operation must fail");
 
@@ -356,7 +413,7 @@ mod tests {
         let expected_response = "test_response";
         let connection = Connection::from_str(expected_response.to_owned() + "\0");
 
-        let query = Query::new("test".to_owned(), Client::new(connection));
+        let query = Query::with_info("test".to_owned(), Client::new(connection));
         let mut actual_response = String::new();
         let mut response = query.execute().unwrap();
         response.read_to_string(&mut actual_response).unwrap();
@@ -375,7 +432,7 @@ mod tests {
     fn test_query_fails_to_execute_with_failing_stream() {
         let connection = Connection::failing();
 
-        let query = Query::new("test".to_owned(), Client::new(connection));
+        let query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_error = query.execute().err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -385,7 +442,7 @@ mod tests {
     fn test_query_runs_updating_command() {
         let connection = Connection::from_str("true\0");
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_response = query.updating().unwrap();
 
         assert!(actual_response);
@@ -401,7 +458,7 @@ mod tests {
     fn test_query_runs_non_updating_command() {
         let connection = Connection::from_str("false\0");
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_response = query.updating().unwrap();
 
         assert!(!actual_response);
@@ -419,7 +476,7 @@ mod tests {
         let connection = Connection::from_str("test_response\0");
         let client = Client::new(connection);
 
-        let mut query = Query::new("test".to_owned(), client);
+        let mut query = Query::with_info("test".to_owned(), client);
         let _ = query.updating().unwrap();
     }
 
@@ -427,7 +484,7 @@ mod tests {
     fn test_query_fails_to_run_updating_command_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_error = query.updating().expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -438,7 +495,7 @@ mod tests {
         let expected_response = "ident=no";
         let connection = Connection::from_str(&format!("{}\0\0", expected_response));
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_response = query.options().unwrap();
 
         assert_eq!(expected_response, &actual_response.to_string());
@@ -454,7 +511,7 @@ mod tests {
     fn test_query_fails_to_run_options_command_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_error = query.options().expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -465,7 +522,7 @@ mod tests {
         let expected_response = QUERY_INFO;
         let connection = Connection::from_str(&format!("{}\0\0", expected_response));
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_response = query.info().unwrap();
 
         assert_query_info!(actual_response);
@@ -481,7 +538,7 @@ mod tests {
     fn test_query_fails_to_run_info_command_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), Client::new(connection));
+        let mut query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_error = query.info().expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -492,7 +549,7 @@ mod tests {
         let expected_response = "test_response\0";
         let connection = Connection::from_str(expected_response);
 
-        let query = Query::new("test".to_owned(), Client::new(connection));
+        let query = Query::with_info("test".to_owned(), Client::new(connection));
         let client = query.close().unwrap();
 
         let stream = client.into_inner().into_inner();
@@ -506,7 +563,7 @@ mod tests {
     fn test_query_fails_to_close_with_failing_stream() {
         let connection = Connection::failing();
 
-        let query = Query::new("test".to_owned(), Client::new(connection));
+        let query = Query::with_info("test".to_owned(), Client::new(connection));
         let actual_error = query.close().err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));

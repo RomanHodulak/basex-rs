@@ -34,18 +34,17 @@ use crate::query::QueryFailed;
 /// ```
 ///
 /// [`Read`]: std::io::Read
-pub struct Response<T> where T: DatabaseStream {
-    id: String,
-    client: Client<T>,
+pub struct Response<T, HasInfo> where T: DatabaseStream {
+    query: Query<T, HasInfo>,
     info_prefix: Option<Vec<u8>>,
     info_complete: bool,
     is_ok: bool,
     result_complete: bool,
 }
 
-impl<T> Response<T> where T: DatabaseStream {
-    pub(crate) fn new(id: String, client: Client<T>) -> Self {
-        Self { id, client, info_prefix: None, info_complete: false, is_ok: false, result_complete: false, }
+impl<T, HasInfo> Response<T, HasInfo> where T: DatabaseStream {
+    pub(crate) fn new(query: Query<T, HasInfo>) -> Self {
+        Self { query, info_prefix: None, info_complete: false, is_ok: false, result_complete: false, }
     }
 
     /// Reads info and returns back client.
@@ -66,7 +65,7 @@ impl<T> Response<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn close(mut self) -> Result<Query<T>> {
+    pub fn close(mut self) -> Result<Query<T, HasInfo>> {
         let mut buf = [0u8; 4096];
 
         while !self.result_complete && self.read(&mut buf)? > 0 {}
@@ -76,7 +75,7 @@ impl<T> Response<T> where T: DatabaseStream {
         }
 
         match self.is_ok {
-            true => Ok(Query::new(self.id, self.client)),
+            true => Ok(self.query),
             false => {
                 let info_suffix = if !self.info_complete {
                     Some(self.connection().read_string()?)
@@ -96,11 +95,12 @@ impl<T> Response<T> where T: DatabaseStream {
     }
 
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
-        self.client.borrow_mut()
+        let client: &mut Client<T> = self.query.borrow_mut();
+        client.borrow_mut()
     }
 }
 
-impl<T> Read for Response<T> where T: DatabaseStream {
+impl<T, HasInfo> Read for Response<T, HasInfo> where T: DatabaseStream {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.result_complete {
             return Ok(0);
@@ -163,7 +163,9 @@ mod tests {
     fn test_reading_result_from_response() {
         let connection = Connection::from_str("result\0".to_owned());
         let client = Client::new(connection);
-        let mut response = Response::new("1".to_owned(), client);
+
+        let query = Query::without_info("1".to_owned(), client);
+        let mut response = Response::new(query);
         let mut actual_response = String::new();
         response.read_to_string(&mut actual_response).unwrap();
         let expected_response = "result".to_owned();
@@ -175,7 +177,9 @@ mod tests {
     fn test_reading_result_from_response_on_multiple_read_calls() {
         let connection = Connection::from_str("result".repeat(10) + "\0");
         let client = Client::new(connection);
-        let mut response = Response::new("1".to_owned(), client);
+
+        let query = Query::without_info("1".to_owned(), client);
+        let mut response = Response::new(query);
         let mut actual_response = String::new();
         response.read_to_string(&mut actual_response).unwrap();
         let expected_response = "result".repeat(10).to_owned();
@@ -189,7 +193,9 @@ mod tests {
     fn test_reading_result_from_response_with_some_escape_bytes() {
         let connection = Connection::from_bytes(&[0xFFu8, 0, 1, 6, 9, 0xFF, 0xFF, 3, 0]);
         let client = Client::new(connection);
-        let mut response = Response::new("1".to_owned(), client);
+
+        let query = Query::without_info("1".to_owned(), client);
+        let mut response = Response::new(query);
         let mut actual_response: Vec<u8> = vec![];
         response.read_to_end(&mut actual_response).unwrap();
         let expected_response = vec![0u8, 1, 6, 9, 0xFF, 3];
@@ -205,7 +211,9 @@ mod tests {
         bytes.extend([0]);
         let connection = Connection::from_bytes(&bytes);
         let client = Client::new(connection);
-        let mut response = Response::new("1".to_owned(), client);
+
+        let query = Query::without_info("1".to_owned(), client);
+        let mut response = Response::new(query);
         let mut actual_response: Vec<u8> = vec![];
         response.read_to_end(&mut actual_response).unwrap();
         let expected_response = [0u8].repeat(10).to_vec();
@@ -222,7 +230,9 @@ mod tests {
             format!("partial_result\0\u{1}{}\0", expected_error)
         );
         let client = Client::new(connection);
-        let response = Response::new("1".to_owned(), client);
+
+        let query = Query::without_info("1".to_owned(), client);
+        let response = Response::new(query);
         let actual_error = response.close().err().unwrap();
 
         assert!(matches!(
@@ -236,7 +246,8 @@ mod tests {
         let expected_error = "Stopped at ., 1/1:\n[XPST0008] ".to_owned() + &"error".repeat(5000);
         let connection = Connection::from_str(format!("partial_result\0\u{1}{}\0", expected_error));
         let client = Client::new(connection);
-        let response = Response::new("1".to_owned(), client);
+        let query = Query::without_info("1".to_owned(), client);
+        let response = Response::new(query);
         let actual_error = response.close().err().unwrap();
 
         assert!(matches!(
@@ -250,8 +261,9 @@ mod tests {
     fn test_reading_panics_on_invalid_status_byte() {
         let connection = Connection::from_str("partial_result\0\u{2}test_error\0".to_owned());
         let client = Client::new(connection);
+        let query = Query::without_info("1".to_owned(), client);
 
-        let _ = Response::new("1".to_owned(), client).read(&mut [0u8; 27]);
+        let _ = Response::new(query).read(&mut [0u8; 27]);
     }
 
     #[test]
@@ -259,7 +271,8 @@ mod tests {
     fn test_reading_panics_on_incomplete_result() {
         let connection = Connection::from_str("partial_result".to_owned());
         let client = Client::new(connection);
+        let query = Query::without_info("1".to_owned(), client);
 
-        let _ = Response::new("1".to_owned(), client).close();
+        let _ = Response::new(query).close();
     }
 }

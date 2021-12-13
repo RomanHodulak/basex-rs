@@ -13,7 +13,7 @@ fn test_query_binds_context() -> Result<(), ClientError> {
     assert!(info.starts_with(&format!("Database '{}' created", database_name)));
 
     let mut response = {
-        let mut query = client.query("/")?;
+        let mut query = client.query("/")?.without_info()?;
         query.context("<prdel></prdel>")?;
         query.execute()?
     };

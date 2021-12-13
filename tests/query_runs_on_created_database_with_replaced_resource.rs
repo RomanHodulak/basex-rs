@@ -21,7 +21,7 @@ fn test_query_runs_on_created_database_with_replaced_resource() -> Result<(), Cl
     let info = client.replace("sleeping", &mut test_xml.as_ref())?;
     assert!(info.starts_with("1 resource(s) replaced"), "Actual info: {}", info);
 
-    let query = client.query("count(//artikl)")?;
+    let query = client.query("count(//artikl)")?.without_info()?;
     let mut result = String::new();
     let mut response = query.execute()?;
     response.read_to_string(&mut result)?;
