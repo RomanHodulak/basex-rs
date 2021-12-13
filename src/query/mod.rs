@@ -1,3 +1,4 @@
+pub mod analysis;
 pub mod serializer;
 
 #[allow(clippy::module_inception)]

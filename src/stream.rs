@@ -13,11 +13,11 @@ pub trait DatabaseStream: Read + Write + Sized {
     ///
     /// The returned instance is a reference to the same stream that this object references. Both handles will read and
     /// write the same stream of data, and options set on one stream will be propagated to the other stream.
-    fn try_clone(&mut self) -> Result<Self>;
+    fn try_clone(&self) -> Result<Self>;
 }
 
 impl DatabaseStream for TcpStream {
-    fn try_clone(&mut self) -> Result<Self> {
+    fn try_clone(&self) -> Result<Self> {
         Ok(TcpStream::try_clone(self)?)
     }
 }

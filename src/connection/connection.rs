@@ -3,7 +3,10 @@ use std::io::{ Read, copy };
 use std::marker::PhantomData;
 use crate::connection::escape_reader::EscapeReader;
 
+#[derive(Debug)]
 pub struct Unauthenticated;
+
+#[derive(Debug)]
 pub struct Authenticated;
 
 /// Responsible for low-level communication with the stream. It handles
@@ -14,6 +17,7 @@ pub struct Authenticated;
 ///
 /// [`Client`]: crate::client::Client
 /// [`Query`]: crate::query::Query
+#[derive(Debug)]
 pub struct Connection<T, State = Unauthenticated> where T: DatabaseStream {
     state: PhantomData<State>,
     stream: T,
@@ -114,7 +118,7 @@ impl<T, State> Read for Connection<T, State> where T: DatabaseStream {
 
 impl<T, State> Connection<T, State> where T: DatabaseStream {
     /// Creates a new connection with a new independently owned handle to the underlying socket.
-    pub(crate) fn try_clone(&mut self) -> Result<Self> {
+    pub(crate) fn try_clone(&self) -> Result<Self> {
         Ok(Self {
             state: Default::default(),
             stream: self.stream.try_clone()?,
@@ -134,6 +138,12 @@ impl<T, State> Connection<T, State> where T: DatabaseStream {
         }
 
         Ok(String::from_utf8(raw_string)?)
+    }
+}
+
+impl<T, State> Clone for Connection<T, State> where T: DatabaseStream {
+    fn clone(&self) -> Self {
+        self.try_clone().unwrap()
     }
 }
 
@@ -175,6 +185,26 @@ mod tests {
     }
 
     #[test]
+    fn test_authenticated_formats_as_debug() {
+        format!("{:?}", Authenticated);
+    }
+
+    #[test]
+    fn test_unauthenticated_formats_as_debug() {
+        format!("{:?}", Unauthenticated);
+    }
+
+    #[test]
+    fn test_formats_as_debug() {
+        format!("{:?}", Connection::failing());
+    }
+
+    #[test]
+    fn test_clones() {
+        let _ = Connection::from_bytes(&[]).clone();
+    }
+
+    #[test]
     fn test_connection_sends_command_with_arguments() {
         let mut connection = Connection::from_str("test_response");
 
@@ -202,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_cloning_points_to_same_stream() {
-        let mut connection = Connection::from_str("test_response");
+        let connection = Connection::from_str("test_response");
 
         let mut cloned_connection = connection.try_clone().unwrap();
         let _ = cloned_connection.send_arg(&mut "bar".as_bytes()).unwrap()

@@ -1,4 +1,5 @@
-use crate::{Connection, DatabaseStream, Result, Query};
+use std::borrow::BorrowMut;
+use crate::{Connection, DatabaseStream, Result, Query, Client};
 use std::io::Read;
 use crate::connection::Authenticated;
 use crate::errors::ClientError;
@@ -35,7 +36,7 @@ use crate::query::QueryFailed;
 /// [`Read`]: std::io::Read
 pub struct Response<T> where T: DatabaseStream {
     id: String,
-    connection: Connection<T, Authenticated>,
+    client: Client<T>,
     info_prefix: Option<Vec<u8>>,
     info_complete: bool,
     is_ok: bool,
@@ -43,8 +44,8 @@ pub struct Response<T> where T: DatabaseStream {
 }
 
 impl<T> Response<T> where T: DatabaseStream {
-    pub(crate) fn new(id: String, connection: Connection<T, Authenticated>) -> Self {
-        Self { id, connection, info_prefix: None, info_complete: false, is_ok: false, result_complete: false, }
+    pub(crate) fn new(id: String, client: Client<T>) -> Self {
+        Self { id, client, info_prefix: None, info_complete: false, is_ok: false, result_complete: false, }
     }
 
     /// Reads info and returns back client.
@@ -75,18 +76,27 @@ impl<T> Response<T> where T: DatabaseStream {
         }
 
         match self.is_ok {
-            true => Ok(Query::new(self.id, self.connection)),
+            true => Ok(Query::new(self.id, self.client)),
             false => {
+                let info_suffix = if !self.info_complete {
+                    Some(self.connection().read_string()?)
+                } else {
+                    None
+                };
+
                 let mut info = String::from_utf8(self.info_prefix.unwrap_or_default())?;
 
-                if !self.info_complete {
-                    let info_suffix = self.connection.read_string()?;
-                    info.push_str(&info_suffix);
+                if let Some(info_suffix) = info_suffix {
+                    info.push_str(info_suffix.as_str());
                 }
 
                 Err(ClientError::QueryFailed(QueryFailed::new(info)))
             },
         }
+    }
+
+    fn connection(&mut self) -> &mut Connection<T, Authenticated> {
+        self.client.borrow_mut()
     }
 }
 
@@ -96,7 +106,7 @@ impl<T> Read for Response<T> where T: DatabaseStream {
             return Ok(0);
         }
 
-        let size = self.connection.read(buf)?;
+        let size = self.connection().read(buf)?;
         let mut escape = false;
         let mut shift = 0usize;
         let mut position: Option<usize> = None;
@@ -152,7 +162,8 @@ mod tests {
     #[test]
     fn test_reading_result_from_response() {
         let connection = Connection::from_str("result\0".to_owned());
-        let mut response = Response::new("1".to_owned(), connection);
+        let client = Client::new(connection);
+        let mut response = Response::new("1".to_owned(), client);
         let mut actual_response = String::new();
         response.read_to_string(&mut actual_response).unwrap();
         let expected_response = "result".to_owned();
@@ -163,7 +174,8 @@ mod tests {
     #[test]
     fn test_reading_result_from_response_on_multiple_read_calls() {
         let connection = Connection::from_str("result".repeat(10) + "\0");
-        let mut response = Response::new("1".to_owned(), connection);
+        let client = Client::new(connection);
+        let mut response = Response::new("1".to_owned(), client);
         let mut actual_response = String::new();
         response.read_to_string(&mut actual_response).unwrap();
         let expected_response = "result".repeat(10).to_owned();
@@ -176,7 +188,8 @@ mod tests {
     #[test]
     fn test_reading_result_from_response_with_some_escape_bytes() {
         let connection = Connection::from_bytes(&[0xFFu8, 0, 1, 6, 9, 0xFF, 0xFF, 3, 0]);
-        let mut response = Response::new("1".to_owned(), connection);
+        let client = Client::new(connection);
+        let mut response = Response::new("1".to_owned(), client);
         let mut actual_response: Vec<u8> = vec![];
         response.read_to_end(&mut actual_response).unwrap();
         let expected_response = vec![0u8, 1, 6, 9, 0xFF, 3];
@@ -191,7 +204,8 @@ mod tests {
         let mut bytes = [0xFFu8, 0].repeat(10);
         bytes.extend([0]);
         let connection = Connection::from_bytes(&bytes);
-        let mut response = Response::new("1".to_owned(), connection);
+        let client = Client::new(connection);
+        let mut response = Response::new("1".to_owned(), client);
         let mut actual_response: Vec<u8> = vec![];
         response.read_to_end(&mut actual_response).unwrap();
         let expected_response = [0u8].repeat(10).to_vec();
@@ -204,8 +218,11 @@ mod tests {
     #[test]
     fn test_reading_error_from_response() {
         let expected_error = "Stopped at ., 1/1:\n[XPST0008] Undeclared variable: $x.";
-        let connection = Connection::from_str(format!("partial_result\0\u{1}{}\0", expected_error));
-        let response = Response::new("1".to_owned(), connection);
+        let connection = Connection::from_str(
+            format!("partial_result\0\u{1}{}\0", expected_error)
+        );
+        let client = Client::new(connection);
+        let response = Response::new("1".to_owned(), client);
         let actual_error = response.close().err().unwrap();
 
         assert!(matches!(
@@ -218,7 +235,8 @@ mod tests {
     fn test_reading_error_from_response_on_multiple_read_calls() {
         let expected_error = "Stopped at ., 1/1:\n[XPST0008] ".to_owned() + &"error".repeat(5000);
         let connection = Connection::from_str(format!("partial_result\0\u{1}{}\0", expected_error));
-        let response = Response::new("1".to_owned(), connection);
+        let client = Client::new(connection);
+        let response = Response::new("1".to_owned(), client);
         let actual_error = response.close().err().unwrap();
 
         assert!(matches!(
@@ -231,15 +249,17 @@ mod tests {
     #[should_panic]
     fn test_reading_panics_on_invalid_status_byte() {
         let connection = Connection::from_str("partial_result\0\u{2}test_error\0".to_owned());
+        let client = Client::new(connection);
 
-        let _ = Response::new("1".to_owned(), connection).read(&mut [0u8; 27]);
+        let _ = Response::new("1".to_owned(), client).read(&mut [0u8; 27]);
     }
 
     #[test]
     #[should_panic]
     fn test_reading_panics_on_incomplete_result() {
         let connection = Connection::from_str("partial_result".to_owned());
+        let client = Client::new(connection);
 
-        let _ = Response::new("1".to_owned(), connection).close();
+        let _ = Response::new("1".to_owned(), client).close();
     }
 }

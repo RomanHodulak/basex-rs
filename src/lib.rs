@@ -14,7 +14,8 @@ pub use query::{
     Query,
     ToQueryArgument,
     ArgumentWriter,
-    serializer
+    serializer,
+    analysis
 };
 pub use stream::DatabaseStream;
 

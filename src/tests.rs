@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::io::{Read, Write, copy};
 use circbuf::CircBuf;
 
+#[derive(Debug)]
 pub(crate) struct MockStream {
     buffer: Rc<RefCell<Vec<u8>>>,
     response: CircBuf,
@@ -48,9 +49,9 @@ impl Write for MockStream {
 }
 
 impl DatabaseStream for MockStream {
-    fn try_clone(&mut self) -> Result<Self> {
+    fn try_clone(&self) -> Result<Self> {
         let mut cloned_buff = CircBuf::with_capacity(self.response.len()).unwrap();
-        copy(&mut self.response, &mut cloned_buff)?;
+        copy(&mut self.response.get_bytes()[0], &mut cloned_buff)?;
 
         Ok(MockStream {
             buffer: Rc::clone(&self.buffer),
@@ -59,6 +60,7 @@ impl DatabaseStream for MockStream {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct FailingStream;
 
 impl Read for FailingStream {
@@ -78,7 +80,7 @@ impl Write for FailingStream {
 }
 
 impl DatabaseStream for FailingStream {
-    fn try_clone(&mut self) -> Result<Self> {
+    fn try_clone(&self) -> Result<Self> {
         unimplemented!()
     }
 }

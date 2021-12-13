@@ -1,3 +1,4 @@
+use std::borrow::{Borrow, BorrowMut};
 use crate::{Result, Connection, Query, DatabaseStream};
 use std::net::TcpStream;
 use crate::client::Response;
@@ -69,6 +70,7 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 /// ```
 ///
 /// [`Client::connect`]: crate::client::Client<TcpStream>::connect
+#[derive(Debug)]
 pub struct Client<T> where T: DatabaseStream {
     connection: Connection<T, Authenticated>,
 }
@@ -140,7 +142,7 @@ impl<T> Client<T> where T: DatabaseStream {
     /// ```
     pub fn execute(mut self, command: &str) -> Result<Response<T>> {
         self.connection.send_arg(&mut command.as_bytes())?;
-        Ok(Response::new(self.connection))
+        Ok(Response::new(self))
     }
 
     /// Creates a new database with the specified name and, optionally, an initial input, and opens it. An existing
@@ -280,7 +282,27 @@ impl<T> Client<T> where T: DatabaseStream {
         self.connection.send_arg(&mut query.into_read())?;
         let id = self.connection.get_response()?;
 
-        Ok(Query::new(id, self.connection.try_clone()?))
+        Ok(Query::new(id, self))
+    }
+}
+
+impl<T: DatabaseStream> Clone for Client<T> {
+    fn clone(&self) -> Self {
+        Self {
+            connection: self.connection.try_clone().unwrap(),
+        }
+    }
+}
+
+impl<T: DatabaseStream> Borrow<Connection<T, Authenticated>> for Client<T> {
+    fn borrow(&self) -> &Connection<T, Authenticated> {
+        &self.connection
+    }
+}
+
+impl<T: DatabaseStream> BorrowMut<Connection<T, Authenticated>> for Client<T> {
+    fn borrow_mut(&mut self) -> &mut Connection<T, Authenticated> {
+        &mut self.connection
     }
 }
 
@@ -288,11 +310,29 @@ impl<T> Client<T> where T: DatabaseStream {
 mod tests {
     use super::*;
     use crate::ClientError;
+    use crate::tests::MockStream;
 
     impl<T> Client<T> where T: DatabaseStream {
         pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
             self.connection
         }
+    }
+
+    #[test]
+    fn test_formats_as_debug() {
+        format!("{:?}", Client::new(Connection::failing()));
+    }
+
+    #[test]
+    fn test_clones() {
+        let _ = Client::new(Connection::from_str("")).clone();
+    }
+
+    #[test]
+    fn test_borrows_as_connection() {
+        let _: &Connection<MockStream, Authenticated> = Client::new(
+            Connection::from_str("test")
+        ).borrow();
     }
 
     #[test]

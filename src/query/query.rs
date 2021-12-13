@@ -1,6 +1,8 @@
+use std::borrow::BorrowMut;
 use std::str::FromStr;
 use crate::{Result, Connection, DatabaseStream, Client};
 use crate::connection::Authenticated;
+use crate::query::analysis::{RawInfo, Info};
 use crate::query::argument::{ArgumentWriter, ToQueryArgument};
 use crate::query::serializer::Options;
 use crate::query::response::Response;
@@ -35,9 +37,9 @@ impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
     ///
     /// [`Query`]: self::Query
     pub fn with_value<'b, A: ToQueryArgument<'b>>(self, value: A) -> Result<&'a mut Query<T>> {
-        value.write_xquery(&mut ArgumentWriter(&mut self.query.connection))?;
-        self.query.connection.send_arg(&mut A::xquery_type().as_bytes())?;
-        self.query.connection.get_response()?;
+        value.write_xquery(&mut ArgumentWriter(self.query.connection()))?;
+        self.query.connection().send_arg(&mut A::xquery_type().as_bytes())?;
+        self.query.connection().get_response()?;
         Ok(self.query)
     }
 
@@ -45,9 +47,9 @@ impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
     ///
     /// [`Query`]: self::Query
     pub fn without_value(self) -> Result<&'a mut Query<T>> {
-        self.query.connection.skip_arg()?;
-        self.query.connection.skip_arg()?;
-        self.query.connection.get_response()?;
+        self.query.connection().skip_arg()?;
+        self.query.connection().skip_arg()?;
+        self.query.connection().get_response()?;
         Ok(self.query)
     }
 }
@@ -61,21 +63,26 @@ impl<'a, T> ArgumentWithOptionalValue<'a, T> where T: DatabaseStream {
 /// Once happy with the arguments bound or context set, the Query can be executed or analysed.
 pub struct Query<T> where T: DatabaseStream {
     id: String,
-    connection: Connection<T, Authenticated>,
+    client: Client<T>,
 }
 
 impl<T> Query<T> where T: DatabaseStream {
-
-    pub(crate) fn new(id: String, connection: Connection<T, Authenticated>) -> Self {
-        Self { id, connection }
+    /// Creates a new instance of query.
+    ///
+    /// Assumes that the query is already created on the BaseX server. This instance only attaches to an existing
+    /// query on the database. One property is that things like bound variables are persisted. You could actually create
+    /// an instance of Query after it has several bound variables or even changes context.
+    pub(crate) fn new(id: String, client: Client<T>) -> Self {
+        Self { id, client }
     }
 
     /// Closes and unregisters the query with the specified id.
     pub fn close(mut self) -> Result<Client<T>> {
-        self.connection.send_cmd(Command::Close as u8)?;
-        self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.get_response()?;
-        Ok(Client::new(self.connection))
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Close as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
+        connection.get_response()?;
+        Ok(self.client)
     }
 
     /// Binds a value to a variable. The type will be ignored if the value is `None`.
@@ -102,9 +109,10 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # }
     /// ```
     pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T>> {
-        self.connection.send_cmd(Command::Bind as u8)?;
-        self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.send_arg(&mut name.as_bytes())?;
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Bind as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
+        connection.send_arg(&mut name.as_bytes())?;
         Ok(ArgumentWithOptionalValue::new(self))
     }
 
@@ -135,16 +143,18 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # }
     /// ```
     pub fn execute(mut self) -> Result<Response<T>> {
-        self.connection.send_cmd(Command::Execute as u8)?;
-        self.connection.send_arg(&mut self.id.as_bytes())?;
-        Ok(Response::new(self.id, self.connection))
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Execute as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
+        Ok(Response::new(self.id, self.client))
     }
 
     /// Returns a string with query compilation and profiling info.
-    pub fn info(&mut self) -> Result<String> {
-        self.connection.send_cmd(Command::Info as u8)?;
-        self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.get_response()
+    pub fn info(&mut self) -> Result<impl Info> {
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Info as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
+        Ok(RawInfo::new(self.connection().get_response()?))
     }
 
     /// Returns all query serialization options.
@@ -163,9 +173,10 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     pub fn options(&mut self) -> Result<Options> {
-        self.connection.send_cmd(Command::Options as u8)?;
-        self.connection.send_arg(&mut self.id.as_bytes())?;
-        let response = self.connection.get_response()?;
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Options as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
+        let response = self.connection().get_response()?;
         Ok(Options::from_str(&response).unwrap())
     }
 
@@ -195,12 +206,13 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn context<'a>(&mut self, value: impl AsResource<'a>) -> Result<&mut Self> {
-        self.connection.send_cmd(Command::Context as u8)?;
-        self.connection.send_arg(&mut self.id.as_bytes())?;
-        self.connection.send_arg(&mut value.into_read())?;
-        self.connection.send_arg(&mut "document-node()".as_bytes())?;
-        self.connection.get_response()?;
+    pub fn context<'b>(&mut self, value: impl AsResource<'b>) -> Result<&mut Self> {
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Context as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
+        connection.send_arg(&mut value.into_read())?;
+        connection.send_arg(&mut "document-node()".as_bytes())?;
+        connection.get_response()?;
         Ok(self)
     }
 
@@ -226,26 +238,32 @@ impl<T> Query<T> where T: DatabaseStream {
     /// # }
     /// ```
     pub fn updating(&mut self) -> Result<bool> {
-        self.connection.send_cmd(Command::Updating as u8)?;
-        self.connection.send_arg(&mut self.id.as_bytes())?;
+        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        connection.send_cmd(Command::Updating as u8)?;
+        connection.send_arg(&mut self.id.as_bytes())?;
 
-        match self.connection.get_response()?.as_str() {
+        match self.connection().get_response()?.as_str() {
             "true" => Ok(true),
             "false" => Ok(false),
             other => panic!("Expected boolean string, got \"{}\"", other),
         }
+    }
+
+    fn connection(&mut self) -> &mut Connection<T, Authenticated> {
+        self.client.borrow_mut()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ClientError;
+    use crate::{assert_query_info, ClientError};
+    use crate::query::analysis::tests::QUERY_INFO;
     use std::io::{empty, Read};
 
     impl<T> Query<T> where T: DatabaseStream {
         pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
-            self.connection
+            self.client.into_inner()
         }
     }
 
@@ -253,7 +271,7 @@ mod tests {
     fn test_query_binds_arguments() -> Result<()> {
         let connection = Connection::from_str("\0\0\0\0\0");
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
 
         query.bind("foo")?.with_value("aaa")?
             .bind("bar")?.with_value(123)?
@@ -273,7 +291,7 @@ mod tests {
     fn test_query_fails_to_bind_argument_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_error = query.bind("foo")
             .err().expect("Operation must fail");
 
@@ -284,7 +302,7 @@ mod tests {
     fn test_query_binds_value_to_context() {
         let connection = Connection::from_str("\0\0");
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let _ = query.context("aaa").unwrap();
 
         let stream = query.into_inner().into_inner();
@@ -298,7 +316,7 @@ mod tests {
     fn test_query_binds_value_to_context_with_empty_type() {
         let connection = Connection::from_str("\0\0");
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let _ = query.context("aaa").unwrap();
 
         let stream = query.into_inner().into_inner();
@@ -312,7 +330,7 @@ mod tests {
     fn test_query_binds_empty_value_to_context() {
         let connection = Connection::from_str("\0\0");
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let _ = query.context(&mut empty()).unwrap();
 
         let stream = query.into_inner().into_inner();
@@ -326,7 +344,7 @@ mod tests {
     fn test_query_fails_to_bind_context_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_error = query.context(&mut empty())
             .err().expect("Operation must fail");
 
@@ -338,7 +356,7 @@ mod tests {
         let expected_response = "test_response";
         let connection = Connection::from_str(expected_response.to_owned() + "\0");
 
-        let query = Query::new("test".to_owned(), connection);
+        let query = Query::new("test".to_owned(), Client::new(connection));
         let mut actual_response = String::new();
         let mut response = query.execute().unwrap();
         response.read_to_string(&mut actual_response).unwrap();
@@ -357,7 +375,7 @@ mod tests {
     fn test_query_fails_to_execute_with_failing_stream() {
         let connection = Connection::failing();
 
-        let query = Query::new("test".to_owned(), connection);
+        let query = Query::new("test".to_owned(), Client::new(connection));
         let actual_error = query.execute().err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -367,7 +385,7 @@ mod tests {
     fn test_query_runs_updating_command() {
         let connection = Connection::from_str("true\0");
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_response = query.updating().unwrap();
 
         assert!(actual_response);
@@ -383,7 +401,7 @@ mod tests {
     fn test_query_runs_non_updating_command() {
         let connection = Connection::from_str("false\0");
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_response = query.updating().unwrap();
 
         assert!(!actual_response);
@@ -398,9 +416,10 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_query_panics_updating_command_response_is_not_bool() {
-        let connection = Connection::from_str("test_response");
+        let connection = Connection::from_str("test_response\0");
+        let client = Client::new(connection);
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), client);
         let _ = query.updating().unwrap();
     }
 
@@ -408,7 +427,7 @@ mod tests {
     fn test_query_fails_to_run_updating_command_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_error = query.updating().expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -419,7 +438,7 @@ mod tests {
         let expected_response = "ident=no";
         let connection = Connection::from_str(&format!("{}\0\0", expected_response));
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_response = query.options().unwrap();
 
         assert_eq!(expected_response, &actual_response.to_string());
@@ -435,7 +454,7 @@ mod tests {
     fn test_query_fails_to_run_options_command_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_error = query.options().expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -443,13 +462,13 @@ mod tests {
 
     #[test]
     fn test_query_runs_info_command() {
-        let expected_response = "test_response";
+        let expected_response = QUERY_INFO;
         let connection = Connection::from_str(&format!("{}\0\0", expected_response));
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_response = query.info().unwrap();
 
-        assert_eq!(expected_response, actual_response);
+        assert_query_info!(actual_response);
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
@@ -462,7 +481,7 @@ mod tests {
     fn test_query_fails_to_run_info_command_with_failing_stream() {
         let connection = Connection::failing();
 
-        let mut query = Query::new("test".to_owned(), connection);
+        let mut query = Query::new("test".to_owned(), Client::new(connection));
         let actual_error = query.info().expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -473,7 +492,7 @@ mod tests {
         let expected_response = "test_response\0";
         let connection = Connection::from_str(expected_response);
 
-        let query = Query::new("test".to_owned(), connection);
+        let query = Query::new("test".to_owned(), Client::new(connection));
         let client = query.close().unwrap();
 
         let stream = client.into_inner().into_inner();
@@ -487,7 +506,7 @@ mod tests {
     fn test_query_fails_to_close_with_failing_stream() {
         let connection = Connection::failing();
 
-        let query = Query::new("test".to_owned(), connection);
+        let query = Query::new("test".to_owned(), Client::new(connection));
         let actual_error = query.close().err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
