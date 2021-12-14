@@ -12,6 +12,7 @@ pub use connection::Connection;
 pub use errors::ClientError;
 pub use query::{
     Query,
+    WithInfo, WithoutInfo,
     ToQueryArgument,
     ArgumentWriter,
     serializer,

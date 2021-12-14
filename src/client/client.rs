@@ -49,10 +49,9 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 ///
 /// # Example
 /// ```
-/// use basex::{Client, ClientError, Connection};
-///
+/// # use basex::{Client, ClientError, Connection};
+/// # use std::io::Read;
 /// # fn main() -> Result<(), ClientError> {
-/// use std::io::Read;
 /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///
 /// let info = client.create("a45d766")?
@@ -81,9 +80,9 @@ impl Client<TcpStream> {
     /// Connects and authenticates to BaseX server using TCP stream.
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
     ///
+    /// ```
+    /// # use basex::{Client, ClientError};
     /// # fn main() -> Result<(), ClientError> {
     /// let client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// # Ok(())
@@ -99,17 +98,16 @@ impl Client<TcpStream> {
 }
 
 impl<T> Client<T> where T: DatabaseStream {
-    /// Returns new client instance with the given connection bound to it. It assumes that the connection is
-    /// authenticated.
+    /// Returns new client instance with the given connection bound to it. Works only with authenticated connections.
     ///
     /// Typically, you only need to use this method when using a custom connection. It is used heavily in tests, for
     /// example. For regular usage, refer to the [`Client::connect`] method.
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError, Connection};
-    /// use std::net::TcpStream;
     ///
+    /// ```
+    /// # use basex::{Client, ClientError, Connection};
+    /// # use std::net::TcpStream;
     /// # fn main() -> Result<(), ClientError> {
     /// let stream = TcpStream::connect("localhost:1984")?;
     /// let connection = Connection::new(stream).authenticate("admin", "admin")?;
@@ -124,17 +122,16 @@ impl<T> Client<T> where T: DatabaseStream {
         Self { connection }
     }
 
-    /// Executes a [database command](https://docs.basex.org/wiki/Commands).
+    /// Executes a server [`command`](https://docs.basex.org/wiki/Commands) including arguments.
     ///
-    /// # Arguments
-    /// * `command` DB command to execute including arguments.
+    /// Returns response which can be read using the [`Read`] trait.
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
-    /// use std::io::Read;
     ///
-    /// # fn main() -> Result<(), ClientError> {
+    /// ```
+    /// # use basex::{Client, Result};
+    /// # use std::io::Read;
+    /// # fn main() -> Result<()> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// let mut list = String::new();
     /// client.execute("LIST")?.read_to_string(&mut list)?;
@@ -142,24 +139,25 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// [`Read`]: std::io::Read
     pub fn execute(mut self, command: &str) -> Result<Response<T>> {
         self.connection.send_arg(&mut command.as_bytes())?;
         Ok(Response::new(self))
     }
 
-    /// Creates a new database with the specified name and, optionally, an initial input, and opens it. An existing
-    /// database will be overwritten. The input can be any stream pointing to a valid XML.
+    /// Creates a new database with the specified `name` and, optionally, an initial `input` and opens it.
     ///
-    /// Database creation can be controlled by setting [Create Options](http://docs.basex.org/wiki/Options#Create_Options)
-    ///
-    /// # Arguments
-    /// * `name` must be a [valid database name](http://docs.basex.org/wiki/Commands#Valid_Names)
+    /// * Overwrites existing database with the same `name`.
+    /// * The `name` must be [valid database name](http://docs.basex.org/wiki/Commands#Valid_Names).
+    /// * The `input` is a stream with valid XML.
+    /// * More options can be controlled by setting [Create Options](http://docs.basex.org/wiki/Options#Create_Options)
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
     ///
-    /// # fn main() -> Result<(), ClientError> {
+    /// ```
+    /// # use basex::{Client, Result};
+    /// # fn main() -> Result<()> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// client.create("boy_sminem")?.with_input("<wojak pink_index=\"69\"></wojak>")?;
     /// client.create("bogdanoff")?.without_input()?;
@@ -172,18 +170,14 @@ impl<T> Client<T> where T: DatabaseStream {
         Ok(CommandWithOptionalInput::new(&mut self.connection))
     }
 
-    /// Replaces resources in the currently opened database, addressed by path, with the XML document specified by
-    /// input, or adds new documents if no resource exists at the specified path.
-    ///
-    /// # Arguments
-    /// * `path` a path to put the input at in the currently opened database.
-    /// * `input` a stream with XML data.
+    /// Replaces resources in the currently opened database, addressed by `path`, with the XML document read from
+    /// `input`, or adds new documents if no resource exists at the specified path.
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
     ///
-    /// # fn main() -> Result<(), ClientError> {
+    /// ```
+    /// # use basex::{Client, Result};
+    /// # fn main() -> Result<()> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// client.create("bell")?.without_input()?;
     /// client.replace("bogdanoff", "<wojak pink_index=\"69\"></wojak>")?;
@@ -197,18 +191,13 @@ impl<T> Client<T> where T: DatabaseStream {
         self.connection.get_response()
     }
 
-    /// Stores a binary file specified via input in the currently opened database to the specified
-    /// path. An existing resource will be replaced.
-    ///
-    /// # Arguments
-    /// * `path` a path to put the input at in the currently opened database.
-    /// * `input` a stream with XML data.
+    /// Stores a binary file from `input` in the currently opened database under `path`. Overwrites existing resource.
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
     ///
-    /// # fn main() -> Result<(), ClientError> {
+    /// ```
+    /// # use basex::{Client, Result};
+    /// # fn main() -> Result<()> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// let mut blob = [0 as u8, 1, 2, 3];
     /// client.create("asylum")?.without_input()?;
@@ -223,21 +212,18 @@ impl<T> Client<T> where T: DatabaseStream {
         self.connection.get_response()
     }
 
-    /// Adds an XML resource to the currently opened database at the specified path. Note that:
-    /// *  A document with the same path may occur more than once in a database. If this is unwanted, the
-    /// `Client::replace` method can be used.
-    /// *  If the stream is too large to be added in one go, its data structures will be cached to disk first.
-    /// Caching can be enforced by turning the `ADDCACHE` option on.
+    /// Adds an XML resource to the currently opened database under the specified `path`.
     ///
-    /// # Arguments
-    /// * `path` a path to put the input at in the currently opened database.
-    /// * `input` a stream with XML data.
+    /// * Keeps multiple documents with the same `path`. If this is unwanted, use `Client::replace`.
+    /// * On the server-side if the stream is too large to be added in one go, its data structures will be cached to
+    /// disk first. Caching can be enforced by turning the `ADDCACHE` option on.
+    /// * The `input` is a stream with valid XML.
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
     ///
-    /// # fn main() -> Result<(), ClientError> {
+    /// ```
+    /// # use basex::{Client, Result};
+    /// # fn main() -> Result<()> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// client.create("taurus")?.without_input()?;
     /// client.add("bogdanoff", &mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
@@ -251,17 +237,16 @@ impl<T> Client<T> where T: DatabaseStream {
         self.connection.get_response()
     }
 
-    /// Creates new query instance from given XQuery string.
+    /// Creates a new `query` from given XQuery code.
     ///
-    /// # Arguments
-    /// * `query` a stream with XQuery data.
+    /// You then need to make a statement about collecting compiler info using either [`with_info`] or [`without_info`].
     ///
     /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
     ///
-    /// # fn main() -> Result<(), ClientError> {
-    /// use std::io::Read;
+    /// ```
+    /// # use basex::{Client, Result};
+    /// # use std::io::Read;
+    /// # fn main() -> Result<()> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     ///
     /// let info = client.create("triangle")?
@@ -279,6 +264,9 @@ impl<T> Client<T> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// [`with_info`]: self::QueryWithOptionalInfo::with_info
+    /// [`without_info`]: self::QueryWithOptionalInfo::without_info
     pub fn query<'a, R: AsResource<'a>>(self, query: R) -> Result<QueryWithOptionalInfo<'a, T, R>> {
         Ok(QueryWithOptionalInfo::new(self, query))
     }

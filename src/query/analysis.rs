@@ -2,6 +2,29 @@ use std::fmt::{Debug, Display, Formatter};
 use std::str::FromStr;
 use std::time::Duration;
 
+/// Provides analysis data about a [`Query`].
+///
+/// # Example
+/// ```
+/// # use basex::analysis::Info;
+/// # fn example(info: impl Info) {
+/// println!("Parsing: {:?}", info.parsing_time());
+/// println!("Compiling: {:?}", info.compiling_time());
+/// println!("Evaluating: {:?}", info.evaluating_time());
+/// println!("Printing: {:?}", info.printing_time());
+/// println!("Total Time: {:?}", info.total_time());
+/// println!("Hit(s): {:?}", info.hits());
+/// println!("Updated: {:?}", info.updated());
+/// println!("Printed: {:?}", info.printed());
+/// println!("Read Locking: {:?}", info.read_locking());
+/// println!("Write Locking: {:?}", info.write_locking());
+/// println!("Optimized Query: {:?}", info.optimized_query());
+/// println!("Query: {:?}", info.query());
+/// println!("Compiling: {:?}", info.compiling());
+/// # }
+/// ```
+///
+/// [`Query`]: crate::Query
 pub trait Info: Debug + Display + Clone + PartialEq {
     /// Time it took to parse the query.
     fn parsing_time(&self) -> Duration;

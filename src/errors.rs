@@ -31,7 +31,7 @@ impl Display for ClientError {
         match &*self {
             ClientError::Io(ref e) => e.fmt(f),
             ClientError::Utf8Parse(ref e) => e.fmt(f),
-            ClientError::Auth => write!(f, "Access denied."),
+            ClientError::Auth => write!(f, "access denied"),
             ClientError::CommandFailed { message } => write!(f, "{}", message),
             ClientError::QueryFailed(q) => write!(f, "{}", q.raw()),
         }

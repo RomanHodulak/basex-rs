@@ -9,7 +9,16 @@ use crate::query::serializer::Options;
 use crate::query::response::Response;
 use crate::resource::AsResource;
 
+/// Query that has its compiler [`info`] collected.
+///
+/// [`info`]: self::Query::info
+#[derive(Debug)]
 pub struct WithInfo;
+
+/// Query that has no compiler [`info`] collected. Improves query performance due to the reduced overhead.
+///
+/// [`info`]: self::Query::info
+#[derive(Debug)]
 pub struct WithoutInfo;
 
 /// Represents database command code in the [query mode](https://docs.basex.org/wiki/Query_Mode).
@@ -58,21 +67,40 @@ impl<'a, T, HasInfo> ArgumentWithOptionalValue<'a, T, HasInfo> where T: Database
     }
 }
 
-/// Represents an [XQuery](https://docs.basex.org/wiki/XQuery) code uniquely identified by the database.
+/// Server query is composed of [XQuery](https://docs.basex.org/wiki/XQuery) code, which is immutable once created.
 ///
-/// Database query is created out of an XQuery syntax string. The XQuery gets send to the database and associated with
-/// an ID. Once the query ID is assigned, the XQuery cannot be changed, but the client may bind arguments or context
-/// for it.
+/// The client may [`bind`] arguments, set [`context`] or modify [`options`] which influences the way result is
+/// generated.
 ///
-/// Once happy with the arguments bound or context set, the Query can be executed or analysed.
-pub struct Query<T, HasInfo=WithoutInfo> where T: DatabaseStream {
+/// Furthermore, the client can [`execute`] the query, check for [`updating`] statements or read compiler [`info`].
+///
+/// [`bind`]: self::Query::bind
+/// [`context`]: self::Query::context
+/// [`execute`]: self::Query::execute
+/// [`info`]: self::Query::info
+/// [`options`]: self::Query::options
+/// [`updating`]: self::Query::updating
+#[derive(Debug)]
+pub struct Query<T, HasInfo = WithoutInfo> where T: DatabaseStream {
     has_info: PhantomData<HasInfo>,
     id: String,
     client: Client<T>,
 }
 
 impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
-    /// Closes and unregisters the query with the specified id.
+    /// Deletes the query.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use basex::{Query, DatabaseStream, Result};
+    /// # fn example<T: DatabaseStream, HasInfo>(mut query: Query<T, HasInfo>) -> Result<()> {
+    /// // Delete the query, moves back the `client`.
+    /// let client = query.close()?;
+    /// // Current function now owns `client`.
+    /// # Ok(())
+    /// # }
+    /// ```
     pub fn close(mut self) -> Result<Client<T>> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
         connection.send_cmd(Command::Close as u8)?;
@@ -81,12 +109,12 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
         Ok(self.client)
     }
 
-    /// Binds a value to a variable. The type will be ignored if the value is `None`.
+    /// Binds a variable under the given valid XML `name`.
     ///
-    /// # Arguments
-    /// * `name` must be a valid XML name.
+    /// You then need to make a statement about its value using either [`with_value`] or [`without_value`].
     ///
     /// # Example
+    ///
     /// ```
     /// # use basex::{Client, ClientError};
     /// # use std::io::Read;
@@ -104,6 +132,9 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// [`with_value`]: self::ArgumentWithOptionalValue::with_value
+    /// [`without_value`]: self::ArgumentWithOptionalValue::without_value
     pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T, HasInfo>> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
         connection.send_cmd(Command::Bind as u8)?;
@@ -114,11 +145,13 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
 
     /// Executes the query and returns its response.
     ///
-    /// # Example
-    /// ```
-    /// use basex::{Client, ClientError};
-    /// use std::io::Read;
+    /// The response is readable using the [`Read`] trait.
     ///
+    /// # Example
+    ///
+    /// ```
+    /// # use basex::{Client, ClientError};
+    /// # use std::io::Read;
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// let query = client.query("declare variable $points := 30;
@@ -138,6 +171,8 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
+    ///
+    /// [`Read`]: std::io::Read
     pub fn execute(mut self) -> Result<Response<T, HasInfo>> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
         connection.send_cmd(Command::Execute as u8)?;
@@ -148,6 +183,7 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
     /// Returns all query serialization options.
     ///
     /// # Example
+    ///
     /// ```
     /// # use basex::{Client, ClientError, serializer::BooleanAttribute};
     /// # use std::io::Read;
@@ -168,10 +204,10 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
         Ok(Options::from_str(&response).unwrap())
     }
 
-    /// Binds a resource to the context. Makes the default context unreachable and replaces whatever current context
-    /// is set.
+    /// Replaces whatever context is set (if any) to the given `value`.
     ///
-    /// Context allows you to run query on a different data-set than what is in the currently opened database.
+    /// By default the context is set to currently opened database (if any). Setting context allows you to run query
+    /// on a different data-set or without a database.
     ///
     /// # Example
     ///
@@ -194,7 +230,7 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn context<'b>(&mut self, value: impl AsResource<'b>) -> Result<&mut Self> {
+    pub fn context<'a>(&mut self, value: impl AsResource<'a>) -> Result<&mut Self> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
         connection.send_cmd(Command::Context as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
@@ -210,6 +246,7 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
     /// Panics when the response contains non-boolean value.
     ///
     /// # Example
+    ///
     /// ```
     /// # use basex::{Client, ClientError};
     /// # fn main() -> Result<(), ClientError> {
@@ -243,27 +280,40 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
 }
 
 impl<T> Query<T, WithoutInfo> where T: DatabaseStream {
-    /// Creates a new instance of query.
+    /// Attaches [`Query`] to an existing query in the session.
     ///
-    /// Assumes that the query is already created on the BaseX server. This instance only attaches to an existing
-    /// query on the database. One property is that things like bound variables are persisted. You could actually create
-    /// an instance of Query after it has several bound variables or even changes context.
+    /// [`Query`]: self::Query
     pub(crate) fn without_info(id: String, client: Client<T>) -> Query<T, WithoutInfo> {
         Self { has_info: Default::default(), id, client }
     }
 }
 
 impl<T> Query<T, WithInfo> where T: DatabaseStream {
-    /// Creates a new instance of query.
+    /// Attaches [`Query`] to an existing query in the session.
     ///
-    /// Assumes that the query is already created on the BaseX server. This instance only attaches to an existing
-    /// query on the database. One property is that things like bound variables are persisted. You could actually create
-    /// an instance of Query after it has several bound variables or even changes context.
+    /// [`Query`]: self::Query
     pub(crate) fn with_info(id: String, client: Client<T>) -> Query<T, WithInfo> {
         Self { has_info: Default::default(), id, client }
     }
 
-    /// Returns a string with query compilation and profiling info.
+    /// Returns the query compilation and profiling [`Info`].
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use basex::{Query, DatabaseStream, WithInfo, analysis::Info, Result};
+    /// # fn example<T: DatabaseStream>(mut query: Query<T, WithInfo>) -> Result<()> {
+    /// let info = query.info()?;
+    /// println!(
+    ///     "Compilation took {} ms, query: {}",
+    ///     info.compiling_time().as_millis(),
+    ///     info.optimized_query()
+    /// );
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// [`Info`]: super::analysis::Info
     pub fn info(&mut self) -> Result<impl Info> {
         let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
         connection.send_cmd(Command::Info as u8)?;

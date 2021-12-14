@@ -8,10 +8,10 @@ use crate::errors::ClientError::CommandFailed;
 /// the [`Read`] trait.
 ///
 /// # Example
-/// ```
-/// use basex::{Client, ClientError, Connection};
-/// use std::io::Read;
 ///
+/// ```
+/// # use basex::{Client, ClientError, Connection};
+/// # use std::io::Read;
 /// # fn main() -> Result<(), ClientError> {
 /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///

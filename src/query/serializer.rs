@@ -21,7 +21,7 @@ impl ParseError {
 
 impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("Expected boolean option, got: {}", self.value))
+        f.write_str(&format!("expected boolean option, got: {}", self.value))
     }
 }
 
