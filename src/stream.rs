@@ -1,6 +1,6 @@
-use std::io::{Write, Read};
-use std::net::TcpStream;
 use crate::Result;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 
 /// Represents a stream usable for BaseX database [`Connection`].
 ///

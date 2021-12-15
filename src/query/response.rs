@@ -1,9 +1,9 @@
-use std::borrow::BorrowMut;
-use crate::{Connection, DatabaseStream, Result, Query, Client};
-use std::io::Read;
 use crate::connection::Authenticated;
 use crate::errors::ClientError;
 use crate::query::QueryFailed;
+use crate::{Client, Connection, DatabaseStream, Query, Result};
+use std::borrow::BorrowMut;
+use std::io::Read;
 
 /// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
 /// the [`Read`] trait.
@@ -34,7 +34,10 @@ use crate::query::QueryFailed;
 /// ```
 ///
 /// [`Read`]: std::io::Read
-pub struct Response<T, HasInfo> where T: DatabaseStream {
+pub struct Response<T, HasInfo>
+where
+    T: DatabaseStream,
+{
     query: Query<T, HasInfo>,
     info_prefix: Option<Vec<u8>>,
     info_complete: bool,
@@ -42,9 +45,18 @@ pub struct Response<T, HasInfo> where T: DatabaseStream {
     result_complete: bool,
 }
 
-impl<T, HasInfo> Response<T, HasInfo> where T: DatabaseStream {
+impl<T, HasInfo> Response<T, HasInfo>
+where
+    T: DatabaseStream,
+{
     pub(crate) fn new(query: Query<T, HasInfo>) -> Self {
-        Self { query, info_prefix: None, info_complete: false, is_ok: false, result_complete: false, }
+        Self {
+            query,
+            info_prefix: None,
+            info_complete: false,
+            is_ok: false,
+            result_complete: false,
+        }
     }
 
     /// Reads info and returns back client.
@@ -90,7 +102,7 @@ impl<T, HasInfo> Response<T, HasInfo> where T: DatabaseStream {
                 }
 
                 Err(ClientError::QueryFailed(QueryFailed::new(info)))
-            },
+            }
         }
     }
 
@@ -100,7 +112,10 @@ impl<T, HasInfo> Response<T, HasInfo> where T: DatabaseStream {
     }
 }
 
-impl<T, HasInfo> Read for Response<T, HasInfo> where T: DatabaseStream {
+impl<T, HasInfo> Read for Response<T, HasInfo>
+where
+    T: DatabaseStream,
+{
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.result_complete {
             return Ok(0);
@@ -132,7 +147,7 @@ impl<T, HasInfo> Read for Response<T, HasInfo> where T: DatabaseStream {
                 self.is_ok = match buf[..size][position + 1] {
                     0 => true,
                     1 => false,
-                    other => panic!("Invalid status byte \"{}\"", other)
+                    other => panic!("Invalid status byte \"{}\"", other),
                 };
                 if self.is_ok {
                     self.info_complete = true;
@@ -141,7 +156,7 @@ impl<T, HasInfo> Read for Response<T, HasInfo> where T: DatabaseStream {
                         Some(length) => {
                             self.info_complete = true;
                             Some(buf[position + 2..position + 2 + length].to_vec())
-                        },
+                        }
                         None => Some(buf[position + 2..size].to_vec()),
                     };
                 }
@@ -226,9 +241,7 @@ mod tests {
     #[test]
     fn test_reading_error_from_response() {
         let expected_error = "Stopped at ., 1/1:\n[XPST0008] Undeclared variable: $x.";
-        let connection = Connection::from_str(
-            format!("partial_result\0\u{1}{}\0", expected_error)
-        );
+        let connection = Connection::from_str(format!("partial_result\0\u{1}{}\0", expected_error));
         let client = Client::new(connection);
 
         let query = Query::without_info("1".to_owned(), client);

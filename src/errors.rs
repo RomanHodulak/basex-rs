@@ -1,8 +1,8 @@
+use crate::query::QueryFailed;
+use std::error;
 use std::fmt::{Display, Formatter};
 use std::io;
-use std::error;
 use std::string::FromUtf8Error;
-use crate::query::QueryFailed;
 
 /// The error type for the DB operations of the [`Client`], [`Query`] and associated structs and traits.
 ///
@@ -19,9 +19,7 @@ pub enum ClientError {
     /// The provided credentials for authorizing are invalid.
     Auth,
     /// The command was processed but failed to get the expected result.
-    CommandFailed {
-        message: String,
-    },
+    CommandFailed { message: String },
     /// The query was processed but failed to get the expected result.
     QueryFailed(QueryFailed),
 }
@@ -38,8 +36,7 @@ impl Display for ClientError {
     }
 }
 
-impl error::Error for ClientError {
-}
+impl error::Error for ClientError {}
 
 impl From<io::Error> for ClientError {
     fn from(err: io::Error) -> ClientError {
@@ -96,20 +93,24 @@ mod tests {
 
     #[test]
     fn test_command_failed_formats_as_debug() {
-        let error = ClientError::CommandFailed { message: "error".to_owned() };
+        let error = ClientError::CommandFailed {
+            message: "error".to_owned(),
+        };
         let _ = format!("{:?}", error);
     }
 
     #[test]
     fn test_command_failed_formats_as_empty() {
-        let error = ClientError::CommandFailed { message: "error".to_owned() };
+        let error = ClientError::CommandFailed {
+            message: "error".to_owned(),
+        };
         let _ = format!("{}", error);
     }
 
     #[test]
     fn test_query_failed_formats_as_debug() {
         let error = ClientError::QueryFailed(QueryFailed::new(
-            "Stopped at ., 1/1: [XPST0008] Undeclared variable $x.".to_owned()
+            "Stopped at ., 1/1: [XPST0008] Undeclared variable $x.".to_owned(),
         ));
         let _ = format!("{:?}", error);
     }
@@ -117,7 +118,7 @@ mod tests {
     #[test]
     fn test_query_failed_formats_as_empty() {
         let error = ClientError::QueryFailed(QueryFailed::new(
-            "Stopped at ., 1/1: [XPST0008] Undeclared variable $x.".to_owned()
+            "Stopped at ., 1/1: [XPST0008] Undeclared variable $x.".to_owned(),
         ));
         let _ = format!("{}", error);
     }

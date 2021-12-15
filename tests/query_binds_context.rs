@@ -1,13 +1,14 @@
-use std::io::Read;
 use basex;
 use basex::{Client, ClientError};
+use std::io::Read;
 
 #[test]
 fn test_query_binds_context() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
     let database_name = "27d2b96";
-    let info = client.create(database_name)?
+    let info = client
+        .create(database_name)?
         .with_input("<outer><one/><two/><three/></outer>")?;
 
     assert!(info.starts_with(&format!("Database '{}' created", database_name)));

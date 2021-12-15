@@ -8,7 +8,8 @@ use std::io::Read;
 fn test_command_after_unread_query_succeeds() -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
-    let info = client.create("dda5457")?
+    let info = client
+        .create("dda5457")?
         .with_input("<None><Text></Text><Lala></Lala><Papa></Papa></None>")?;
     assert!(info.starts_with("Database 'dda5457' created"));
 

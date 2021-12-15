@@ -4,7 +4,11 @@ use std::io::Read;
 
 macro_rules! path {
     ($path:expr) => {
-        std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/examples/home_depot/files/", $path))
+        std::path::Path::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/examples/home_depot/files/",
+            $path
+        ))
     };
 }
 

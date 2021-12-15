@@ -1,7 +1,7 @@
-use crate::{ClientError, DatabaseStream, Result};
-use std::io::{ Read, copy };
-use std::marker::PhantomData;
 use crate::connection::escape_reader::EscapeReader;
+use crate::{ClientError, DatabaseStream, Result};
+use std::io::{copy, Read};
+use std::marker::PhantomData;
 
 #[derive(Debug)]
 pub struct Unauthenticated;
@@ -18,12 +18,18 @@ pub struct Authenticated;
 /// [`Client`]: crate::client::Client
 /// [`Query`]: crate::query::Query
 #[derive(Debug)]
-pub struct Connection<T, State = Unauthenticated> where T: DatabaseStream {
+pub struct Connection<T, State = Unauthenticated>
+where
+    T: DatabaseStream,
+{
     state: PhantomData<State>,
     stream: T,
 }
 
-impl<T> Connection<T, Unauthenticated> where T: DatabaseStream {
+impl<T> Connection<T, Unauthenticated>
+where
+    T: DatabaseStream,
+{
     /// Creates a connection that communicates with the database via the provided `stream`.
     pub fn new(stream: T) -> Self {
         Self {
@@ -66,7 +72,10 @@ impl<T> Connection<T, Unauthenticated> where T: DatabaseStream {
     }
 }
 
-impl<T> Connection<T, Authenticated> where T: DatabaseStream {
+impl<T> Connection<T, Authenticated>
+where
+    T: DatabaseStream,
+{
     pub(crate) fn send_cmd(&mut self, code: u8) -> Result<&mut Self> {
         self.stream.write_all(&[code])?;
 
@@ -92,8 +101,7 @@ impl<T> Connection<T, Authenticated> where T: DatabaseStream {
 
         if self.is_ok()? {
             Ok(info)
-        }
-        else {
+        } else {
             Err(ClientError::CommandFailed { message: info })
         }
     }
@@ -107,7 +115,10 @@ impl<T> Connection<T, Authenticated> where T: DatabaseStream {
     }
 }
 
-impl<T, State> Read for Connection<T, State> where T: DatabaseStream {
+impl<T, State> Read for Connection<T, State>
+where
+    T: DatabaseStream,
+{
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match buf.is_empty() {
             true => Ok(0),
@@ -116,7 +127,10 @@ impl<T, State> Read for Connection<T, State> where T: DatabaseStream {
     }
 }
 
-impl<T, State> Connection<T, State> where T: DatabaseStream {
+impl<T, State> Connection<T, State>
+where
+    T: DatabaseStream,
+{
     /// Creates a new connection with a new independently owned handle to the underlying socket.
     pub(crate) fn try_clone(&self) -> Result<Self> {
         Ok(Self {
@@ -141,7 +155,10 @@ impl<T, State> Connection<T, State> where T: DatabaseStream {
     }
 }
 
-impl<T, State> Clone for Connection<T, State> where T: DatabaseStream {
+impl<T, State> Clone for Connection<T, State>
+where
+    T: DatabaseStream,
+{
     fn clone(&self) -> Self {
         self.try_clone().unwrap()
     }
@@ -150,10 +167,13 @@ impl<T, State> Clone for Connection<T, State> where T: DatabaseStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{MockStream, FailingStream};
+    use crate::tests::{FailingStream, MockStream};
     use std::io::Read;
 
-    impl<T, State> Connection<T, State> where T: DatabaseStream {
+    impl<T, State> Connection<T, State>
+    where
+        T: DatabaseStream,
+    {
         pub(crate) fn into_inner(self) -> T {
             self.stream
         }
@@ -211,9 +231,13 @@ mod tests {
         let argument_foo = "foo";
         let argument_bar = "bar";
 
-        let _ = connection.send_cmd(1).unwrap()
-            .send_arg(&mut argument_foo.as_bytes()).unwrap()
-            .send_arg(&mut argument_bar.as_bytes()).unwrap();
+        let _ = connection
+            .send_cmd(1)
+            .unwrap()
+            .send_arg(&mut argument_foo.as_bytes())
+            .unwrap()
+            .send_arg(&mut argument_bar.as_bytes())
+            .unwrap();
         let actual_buffer = connection.into_inner().to_string();
         let expected_buffer = "\u{1}foo\u{0}bar\u{0}".to_owned();
 
@@ -235,8 +259,11 @@ mod tests {
         let connection = Connection::from_str("test_response");
 
         let mut cloned_connection = connection.try_clone().unwrap();
-        let _ = cloned_connection.send_arg(&mut "bar".as_bytes()).unwrap()
-            .skip_arg().unwrap();
+        let _ = cloned_connection
+            .send_arg(&mut "bar".as_bytes())
+            .unwrap()
+            .skip_arg()
+            .unwrap();
 
         let actual_buffer = connection.into_inner().to_string();
         let actual_cloned_buffer = cloned_connection.into_inner().to_string();
@@ -282,8 +309,7 @@ mod tests {
     fn test_authentication_succeeds_with_correct_auth_string() {
         let expected_auth_string = "admin\0af13b20af0e0b0e3517a406c42622d3d\0";
         let stream = MockStream::new("BaseX:19501915960728\0".to_owned());
-        let connection = Connection::new(stream)
-            .authenticate("admin", "admin").unwrap();
+        let connection = Connection::new(stream).authenticate("admin", "admin").unwrap();
 
         let actual_auth_string = connection.into_inner().to_string();
 
@@ -295,8 +321,10 @@ mod tests {
         let stream = MockStream::new("BaseX:19501915960728\0\u{1}".to_owned());
         let connection = Connection::new(stream);
 
-        let actual_error = connection.authenticate("admin", "admin")
-            .err().expect("Operation must fail");
+        let actual_error = connection
+            .authenticate("admin", "admin")
+            .err()
+            .expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Auth));
     }

@@ -1,8 +1,8 @@
-use std::borrow::BorrowMut;
-use crate::{Connection, DatabaseStream, Result, Client};
-use std::io::Read;
 use crate::connection::Authenticated;
 use crate::errors::ClientError::CommandFailed;
+use crate::{Client, Connection, DatabaseStream, Result};
+use std::borrow::BorrowMut;
+use std::io::Read;
 
 /// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
 /// the [`Read`] trait.
@@ -33,16 +33,27 @@ use crate::errors::ClientError::CommandFailed;
 /// ```
 ///
 /// [`Read`]: std::io::Read
-pub struct Response<T> where T: DatabaseStream {
+pub struct Response<T>
+where
+    T: DatabaseStream,
+{
     client: Client<T>,
     info_prefix: Option<Vec<u8>>,
     info_complete: bool,
     is_ok: bool,
 }
 
-impl<T> Response<T> where T: DatabaseStream {
+impl<T> Response<T>
+where
+    T: DatabaseStream,
+{
     pub(crate) fn new(client: Client<T>) -> Self {
-        Self { client, info_prefix: None, info_complete: false, is_ok: false }
+        Self {
+            client,
+            info_prefix: None,
+            info_complete: false,
+            is_ok: false,
+        }
     }
 
     /// Reads info and returns back client.
@@ -97,7 +108,10 @@ impl<T> Response<T> where T: DatabaseStream {
     }
 }
 
-impl<T> Read for Response<T> where T: DatabaseStream {
+impl<T> Read for Response<T>
+where
+    T: DatabaseStream,
+{
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.info_prefix.is_some() {
             return Ok(0);
@@ -131,10 +145,10 @@ impl<T> Read for Response<T> where T: DatabaseStream {
                         self.is_ok = match buf[..size][position + 1 + length + 1] {
                             0 => true,
                             1 => false,
-                            other => panic!("Invalid status byte \"{}\"", other)
+                            other => panic!("Invalid status byte \"{}\"", other),
                         };
                         Some(buf[position + 1..position + 1 + length].to_vec())
-                    },
+                    }
                     None => Some(buf[position + 1..size].to_vec()),
                 };
             }
@@ -164,9 +178,7 @@ mod tests {
 
     #[test]
     fn test_closing_returns_info_on_multiple_read_calls() {
-        let connection = Connection::from_str(
-            "result\0".to_owned() + &"info".repeat(20) + "\0\0"
-        );
+        let connection = Connection::from_str("result\0".to_owned() + &"info".repeat(20) + "\0\0");
         let client = Client::new(connection);
 
         let response = Response::new(client);
@@ -202,9 +214,7 @@ mod tests {
 
     #[test]
     fn test_reading_result_from_response_with_some_escape_bytes() {
-        let connection = Connection::from_bytes(
-            &[0xFFu8, 0, 1, 6, 9, 0xFF, 0xFF, 3, 0, 0]
-        );
+        let connection = Connection::from_bytes(&[0xFFu8, 0, 1, 6, 9, 0xFF, 0xFF, 3, 0, 0]);
         let client = Client::new(connection);
         let mut response = Response::new(client);
         let mut actual_response: Vec<u8> = vec![];

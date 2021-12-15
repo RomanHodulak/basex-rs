@@ -1,11 +1,11 @@
-use std::borrow::{Borrow, BorrowMut};
-use std::marker::PhantomData;
-use crate::{Result, Connection, Query, DatabaseStream};
-use std::net::TcpStream;
 use crate::client::Response;
 use crate::connection::Authenticated;
 use crate::query::{WithInfo, WithoutInfo};
 use crate::resource::AsResource;
+use crate::{Connection, DatabaseStream, Query, Result};
+use std::borrow::{Borrow, BorrowMut};
+use std::marker::PhantomData;
+use std::net::TcpStream;
 
 /// Represents database command code in the [standard mode](https://docs.basex.org/wiki/Standard_Mode).
 enum Command {
@@ -20,11 +20,17 @@ enum Command {
 ///
 /// [`with_input`]: self::CommandWithOptionalInput::with_input
 /// [`without_input`]: self::CommandWithOptionalInput::without_input
-pub struct CommandWithOptionalInput<'a, T> where T: DatabaseStream {
+pub struct CommandWithOptionalInput<'a, T>
+where
+    T: DatabaseStream,
+{
     connection: &'a mut Connection<T, Authenticated>,
 }
 
-impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
+impl<'a, T> CommandWithOptionalInput<'a, T>
+where
+    T: DatabaseStream,
+{
     fn new(connection: &'a mut Connection<T, Authenticated>) -> Self {
         Self { connection }
     }
@@ -72,7 +78,10 @@ impl<'a, T> CommandWithOptionalInput<'a, T> where T: DatabaseStream {
 ///
 /// [`Client::connect`]: crate::client::Client<TcpStream>::connect
 #[derive(Debug)]
-pub struct Client<T> where T: DatabaseStream {
+pub struct Client<T>
+where
+    T: DatabaseStream,
+{
     connection: Connection<T, Authenticated>,
 }
 
@@ -90,14 +99,16 @@ impl Client<TcpStream> {
     /// ```
     pub fn connect(host: &str, port: u16, user: &str, password: &str) -> Result<Client<TcpStream>> {
         let stream = TcpStream::connect(&format!("{}:{}", host, port))?;
-        let connection = Connection::new(stream)
-            .authenticate(user, password)?;
+        let connection = Connection::new(stream).authenticate(user, password)?;
 
         Ok(Client::new(connection))
     }
 }
 
-impl<T> Client<T> where T: DatabaseStream {
+impl<T> Client<T>
+where
+    T: DatabaseStream,
+{
     /// Returns new client instance with the given connection bound to it. Works only with authenticated connections.
     ///
     /// Typically, you only need to use this method when using a custom connection. It is used heavily in tests, for
@@ -292,13 +303,21 @@ impl<T: DatabaseStream> BorrowMut<Connection<T, Authenticated>> for Client<T> {
     }
 }
 
-pub struct QueryWithOptionalInfo<'a, T, R> where T: DatabaseStream, R: AsResource<'a> {
+pub struct QueryWithOptionalInfo<'a, T, R>
+where
+    T: DatabaseStream,
+    R: AsResource<'a>,
+{
     phantom: PhantomData<&'a ()>,
     client: Client<T>,
     query: R,
 }
 
-impl<'a, T, R> QueryWithOptionalInfo<'a, T, R> where T: DatabaseStream, R: AsResource<'a> {
+impl<'a, T, R> QueryWithOptionalInfo<'a, T, R>
+where
+    T: DatabaseStream,
+    R: AsResource<'a>,
+{
     fn new(client: Client<T>, query: R) -> Self {
         Self {
             phantom: Default::default(),
@@ -308,15 +327,13 @@ impl<'a, T, R> QueryWithOptionalInfo<'a, T, R> where T: DatabaseStream, R: AsRes
     }
 
     pub fn with_info(self) -> Result<Query<T, WithInfo>> {
-        let (mut client, _) = self.client.execute("SET QUERYINFO true")?
-            .close()?;
+        let (mut client, _) = self.client.execute("SET QUERYINFO true")?.close()?;
         let id = Self::query(&mut client, self.query)?;
         Ok(Query::with_info(id, client))
     }
 
     pub fn without_info(self) -> Result<Query<T, WithoutInfo>> {
-        let (mut client, _) = self.client.execute("SET QUERYINFO false")?
-            .close()?;
+        let (mut client, _) = self.client.execute("SET QUERYINFO false")?.close()?;
         let id = Self::query(&mut client, self.query)?;
         Ok(Query::without_info(id, client))
     }
@@ -331,10 +348,13 @@ impl<'a, T, R> QueryWithOptionalInfo<'a, T, R> where T: DatabaseStream, R: AsRes
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ClientError;
     use crate::tests::MockStream;
+    use crate::ClientError;
 
-    impl<T> Client<T> where T: DatabaseStream {
+    impl<T> Client<T>
+    where
+        T: DatabaseStream,
+    {
         pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
             self.connection
         }
@@ -352,19 +372,23 @@ mod tests {
 
     #[test]
     fn test_borrows_as_connection() {
-        let _: &Connection<MockStream, Authenticated> = Client::new(
-            Connection::from_str("test")
-        ).borrow();
+        let _: &Connection<MockStream, Authenticated> = Client::new(Connection::from_str("test")).borrow();
     }
 
     #[test]
     fn test_database_is_created_with_input() {
         let mut client = Client::new(Connection::from_str("test\0"));
 
-        let info = client.create("boy_sminem").unwrap()
-            .with_input("<wojak><pink_index>69</pink_index></wojak>").unwrap();
+        let info = client
+            .create("boy_sminem")
+            .unwrap()
+            .with_input("<wojak><pink_index>69</pink_index></wojak>")
+            .unwrap();
 
-        assert_eq!(client.into_inner().into_inner().to_string(), "\u{8}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
+        assert_eq!(
+            client.into_inner().into_inner().to_string(),
+            "\u{8}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned()
+        );
         assert_eq!("test", info);
     }
 
@@ -372,10 +396,12 @@ mod tests {
     fn test_database_is_created_without_input() {
         let mut client = Client::new(Connection::from_str("test\0"));
 
-        let info = client.create("boy_sminem").unwrap()
-            .without_input().unwrap();
+        let info = client.create("boy_sminem").unwrap().without_input().unwrap();
 
-        assert_eq!(client.into_inner().into_inner().to_string(), "\u{8}boy_sminem\u{0}\u{0}".to_owned());
+        assert_eq!(
+            client.into_inner().into_inner().to_string(),
+            "\u{8}boy_sminem\u{0}\u{0}".to_owned()
+        );
         assert_eq!("test", info);
     }
 
@@ -383,8 +409,7 @@ mod tests {
     fn test_database_fails_to_create_with_failing_stream() {
         let mut client = Client::new(Connection::failing());
 
-        let actual_error = client.create("boy_sminem")
-            .err().expect("Operation must fail");
+        let actual_error = client.create("boy_sminem").err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
     }
@@ -393,9 +418,14 @@ mod tests {
     fn test_resource_is_replaced() {
         let mut client = Client::new(Connection::from_str("test\0"));
 
-        let info = client.replace("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
+        let info = client
+            .replace("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
+            .unwrap();
 
-        assert_eq!(client.into_inner().into_inner().to_string(), "\u{c}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
+        assert_eq!(
+            client.into_inner().into_inner().to_string(),
+            "\u{c}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned()
+        );
         assert_eq!("test", info);
     }
 
@@ -403,7 +433,8 @@ mod tests {
     fn test_resource_fails_to_replace_with_failing_stream() {
         let mut client = Client::new(Connection::failing());
 
-        let actual_error = client.replace("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
+        let actual_error = client
+            .replace("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
             .expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -413,9 +444,14 @@ mod tests {
     fn test_resource_is_stored() {
         let mut client = Client::new(Connection::from_str("test\0"));
 
-        let info = client.store("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
+        let info = client
+            .store("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
+            .unwrap();
 
-        assert_eq!(client.into_inner().into_inner().to_string(), "\u{d}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
+        assert_eq!(
+            client.into_inner().into_inner().to_string(),
+            "\u{d}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned()
+        );
         assert_eq!("test", info);
     }
 
@@ -423,7 +459,8 @@ mod tests {
     fn test_resource_fails_to_store_with_failing_stream() {
         let mut client = Client::new(Connection::failing());
 
-        let actual_error = client.store("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
+        let actual_error = client
+            .store("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
             .expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
@@ -433,9 +470,14 @@ mod tests {
     fn test_resource_is_added() {
         let mut client = Client::new(Connection::from_str("test\0"));
 
-        let info = client.add("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>").unwrap();
+        let info = client
+            .add("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
+            .unwrap();
 
-        assert_eq!(client.into_inner().into_inner().to_string(), "\u{9}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned());
+        assert_eq!(
+            client.into_inner().into_inner().to_string(),
+            "\u{9}boy_sminem\u{0}<wojak><pink_index>69</pink_index></wojak>\u{0}".to_owned()
+        );
         assert_eq!("test", info);
     }
 
@@ -443,7 +485,8 @@ mod tests {
     fn test_resource_fails_to_add_with_failing_stream() {
         let mut client = Client::new(Connection::failing());
 
-        let actual_error = client.add("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
+        let actual_error = client
+            .add("boy_sminem", "<wojak><pink_index>69</pink_index></wojak>")
             .expect_err("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));

@@ -1,9 +1,9 @@
+use crate::{Client, DatabaseStream, Result};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
-use std::str::FromStr;
 use std::result;
-use crate::{Client, DatabaseStream, Result};
+use std::str::FromStr;
 
 /// Error that have occurred when parsing the option's value.
 #[derive(Debug)]
@@ -25,8 +25,7 @@ impl Display for ParseError {
     }
 }
 
-impl Error for ParseError {
-}
+impl Error for ParseError {}
 
 /// Options for query [serializer](https://docs.basex.org/wiki/Serialization).
 ///
@@ -69,9 +68,7 @@ pub struct Options {
 
 impl Options {
     fn new(options: BTreeMap<String, Attribute>) -> Self {
-        Self {
-            options,
-        }
+        Self { options }
     }
 
     /// Gets mutable reference to an attribute if it exists.
@@ -87,7 +84,8 @@ impl Options {
 
     /// Saves the options to the database for current session.
     pub fn save<T: DatabaseStream>(&self, client: Client<T>) -> Result<Client<T>> {
-        let (client, _) = client.execute(&format!("SET SERIALIZER {}", self.to_string()))?
+        let (client, _) = client
+            .execute(&format!("SET SERIALIZER {}", self.to_string()))?
             .close()?;
         Ok(client)
     }
@@ -102,7 +100,7 @@ impl ToString for Options {
             }
             str.push_str(key);
             str.push('=');
-            str.push_str( &value.to_string());
+            str.push_str(&value.to_string());
         }
         str
     }

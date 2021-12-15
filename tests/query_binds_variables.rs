@@ -1,8 +1,8 @@
-use test_case::test_case;
-use std::net::IpAddr;
-use std::io::Read;
 use basex;
 use basex::{Client, ClientError, ToQueryArgument};
+use std::io::Read;
+use std::net::IpAddr;
+use test_case::test_case;
 
 #[test_case(IpAddr::V4("125.0.0.1".parse().unwrap()), "125.0.0.1", "xs:string")]
 #[test_case("test", "test", "xs:string")]
@@ -23,7 +23,7 @@ use basex::{Client, ClientError, ToQueryArgument};
 fn test_query_binds_variables<'a, T: 'a + ToQueryArgument<'a>>(
     value: T,
     expected_result: &str,
-    expected_type: &str
+    expected_type: &str,
 ) -> Result<(), ClientError> {
     let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 
@@ -33,9 +33,9 @@ fn test_query_binds_variables<'a, T: 'a + ToQueryArgument<'a>>(
     assert!(info.starts_with(&format!("Database '{}' created", database_name)));
 
     let mut response = {
-        let mut query = client.query(
-            &mut format!("declare variable $prdel as {} external; $prdel", expected_type).as_bytes()
-        )?.without_info()?;
+        let mut query = client
+            .query(&mut format!("declare variable $prdel as {} external; $prdel", expected_type).as_bytes())?
+            .without_info()?;
         query.bind("prdel")?.with_value(value)?;
         query.execute()?
     };

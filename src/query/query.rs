@@ -1,13 +1,13 @@
+use crate::connection::Authenticated;
+use crate::query::analysis::{Info, RawInfo};
+use crate::query::argument::{ArgumentWriter, ToQueryArgument};
+use crate::query::response::Response;
+use crate::query::serializer::Options;
+use crate::resource::AsResource;
+use crate::{Client, Connection, DatabaseStream, Result};
 use std::borrow::{Borrow, BorrowMut};
 use std::marker::PhantomData;
 use std::str::FromStr;
-use crate::{Result, Connection, DatabaseStream, Client};
-use crate::connection::Authenticated;
-use crate::query::analysis::{RawInfo, Info};
-use crate::query::argument::{ArgumentWriter, ToQueryArgument};
-use crate::query::serializer::Options;
-use crate::query::response::Response;
-use crate::resource::AsResource;
 
 /// Query that has its compiler [`info`] collected.
 ///
@@ -37,11 +37,17 @@ enum Command {
 ///
 /// [`with_input`]: self::CommandWithOptionalInput::with_input
 /// [`without_input`]: self::CommandWithOptionalInput::without_input
-pub struct ArgumentWithOptionalValue<'a, T, HasInfo> where T: DatabaseStream {
+pub struct ArgumentWithOptionalValue<'a, T, HasInfo>
+where
+    T: DatabaseStream,
+{
     query: &'a mut Query<T, HasInfo>,
 }
 
-impl<'a, T, HasInfo> ArgumentWithOptionalValue<'a, T, HasInfo> where T: DatabaseStream {
+impl<'a, T, HasInfo> ArgumentWithOptionalValue<'a, T, HasInfo>
+where
+    T: DatabaseStream,
+{
     pub(crate) fn new(query: &'a mut Query<T, HasInfo>) -> Self {
         Self { query }
     }
@@ -81,13 +87,19 @@ impl<'a, T, HasInfo> ArgumentWithOptionalValue<'a, T, HasInfo> where T: Database
 /// [`options`]: self::Query::options
 /// [`updating`]: self::Query::updating
 #[derive(Debug)]
-pub struct Query<T, HasInfo = WithoutInfo> where T: DatabaseStream {
+pub struct Query<T, HasInfo = WithoutInfo>
+where
+    T: DatabaseStream,
+{
     has_info: PhantomData<HasInfo>,
     id: String,
     client: Client<T>,
 }
 
-impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
+impl<T, HasInfo> Query<T, HasInfo>
+where
+    T: DatabaseStream,
+{
     /// Deletes the query.
     ///
     /// # Example
@@ -279,21 +291,35 @@ impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
     }
 }
 
-impl<T> Query<T, WithoutInfo> where T: DatabaseStream {
+impl<T> Query<T, WithoutInfo>
+where
+    T: DatabaseStream,
+{
     /// Attaches [`Query`] to an existing query in the session.
     ///
     /// [`Query`]: self::Query
     pub(crate) fn without_info(id: String, client: Client<T>) -> Query<T, WithoutInfo> {
-        Self { has_info: Default::default(), id, client }
+        Self {
+            has_info: Default::default(),
+            id,
+            client,
+        }
     }
 }
 
-impl<T> Query<T, WithInfo> where T: DatabaseStream {
+impl<T> Query<T, WithInfo>
+where
+    T: DatabaseStream,
+{
     /// Attaches [`Query`] to an existing query in the session.
     ///
     /// [`Query`]: self::Query
     pub(crate) fn with_info(id: String, client: Client<T>) -> Query<T, WithInfo> {
-        Self { has_info: Default::default(), id, client }
+        Self {
+            has_info: Default::default(),
+            id,
+            client,
+        }
     }
 
     /// Returns the query compilation and profiling [`Info`].
@@ -322,13 +348,19 @@ impl<T> Query<T, WithInfo> where T: DatabaseStream {
     }
 }
 
-impl<T, HasInfo> Borrow<Client<T>> for Query<T, HasInfo> where T: DatabaseStream {
+impl<T, HasInfo> Borrow<Client<T>> for Query<T, HasInfo>
+where
+    T: DatabaseStream,
+{
     fn borrow(&self) -> &Client<T> {
         &self.client
     }
 }
 
-impl<T, HasInfo> BorrowMut<Client<T>> for Query<T, HasInfo> where T: DatabaseStream {
+impl<T, HasInfo> BorrowMut<Client<T>> for Query<T, HasInfo>
+where
+    T: DatabaseStream,
+{
     fn borrow_mut(&mut self) -> &mut Client<T> {
         &mut self.client
     }
@@ -337,12 +369,15 @@ impl<T, HasInfo> BorrowMut<Client<T>> for Query<T, HasInfo> where T: DatabaseStr
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{assert_query_info, ClientError};
     use crate::query::analysis::tests::QUERY_INFO;
-    use std::io::{empty, Read};
     use crate::tests::FailingStream;
+    use crate::{assert_query_info, ClientError};
+    use std::io::{empty, Read};
 
-    impl<T, HasInfo> Query<T, HasInfo> where T: DatabaseStream {
+    impl<T, HasInfo> Query<T, HasInfo>
+    where
+        T: DatabaseStream,
+    {
         pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
             self.client.into_inner()
         }
@@ -368,10 +403,7 @@ mod tests {
 
     #[test]
     fn test_borrows_as_client() {
-        let _: &Client<FailingStream> = Query::with_info(
-            "".to_owned(),
-            Client::new(Connection::failing())
-        ).borrow();
+        let _: &Client<FailingStream> = Query::with_info("".to_owned(), Client::new(Connection::failing())).borrow();
     }
 
     #[test]
@@ -380,15 +412,20 @@ mod tests {
 
         let mut query = Query::with_info("test".to_owned(), Client::new(connection));
 
-        query.bind("foo")?.with_value("aaa")?
-            .bind("bar")?.with_value(123)?
-            .bind("void")?.without_value()?;
+        query
+            .bind("foo")?
+            .with_value("aaa")?
+            .bind("bar")?
+            .with_value(123)?
+            .bind("void")?
+            .without_value()?;
 
         let stream = query.into_inner().into_inner();
         let actual_buffer = stream.to_string();
         let expected_buffer = "\u{3}test\u{0}foo\u{0}aaa\u{0}xs:string\u{0}\
             \u{3}test\u{0}bar\u{0}123\u{0}xs:int\u{0}\
-            \u{3}test\u{0}void\u{0}\u{0}\u{0}".to_owned();
+            \u{3}test\u{0}void\u{0}\u{0}\u{0}"
+            .to_owned();
 
         assert_eq!(expected_buffer, actual_buffer);
         Ok(())
@@ -399,8 +436,7 @@ mod tests {
         let connection = Connection::failing();
 
         let mut query = Query::with_info("test".to_owned(), Client::new(connection));
-        let actual_error = query.bind("foo")
-            .err().expect("Operation must fail");
+        let actual_error = query.bind("foo").err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
     }
@@ -452,8 +488,7 @@ mod tests {
         let connection = Connection::failing();
 
         let mut query = Query::with_info("test".to_owned(), Client::new(connection));
-        let actual_error = query.context(&mut empty())
-            .err().expect("Operation must fail");
+        let actual_error = query.context(&mut empty()).err().expect("Operation must fail");
 
         assert!(matches!(actual_error, ClientError::Io(_)));
     }

@@ -6,7 +6,10 @@ pub trait AsResource<'a> {
     fn into_read(self) -> Self::Reader;
 }
 
-impl<'a, T> AsResource<'a> for &'a mut T where T: Read {
+impl<'a, T> AsResource<'a> for &'a mut T
+where
+    T: Read,
+{
     type Reader = &'a mut T;
 
     fn into_read(self) -> Self::Reader {

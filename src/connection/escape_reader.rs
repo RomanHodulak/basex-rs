@@ -1,5 +1,5 @@
-use std::io::Read;
 use std::cmp::min;
+use std::io::Read;
 
 /// Wraps a reader and escapes all bytes with special meaning as defined by
 /// [conventions](https://docs.basex.org/wiki/Server_Protocol#Conventions).
@@ -11,18 +11,30 @@ use std::cmp::min;
 /// `[0, 1, 2, 3, 4, 0xFF]`
 /// ## Output
 /// `[0xFF, 0, 1, 2, 3, 4, 0xFF, 0xFF]`
-pub(crate) struct EscapeReader<'a, R> where R: Read {
+pub(crate) struct EscapeReader<'a, R>
+where
+    R: Read,
+{
     inner: &'a mut R,
     accumulator: Vec<u8>,
 }
 
-impl<'a, R> EscapeReader<'a, R> where R: Read {
+impl<'a, R> EscapeReader<'a, R>
+where
+    R: Read,
+{
     pub(crate) fn new(inner: &'a mut R) -> Self {
-        Self { inner, accumulator: vec![], }
+        Self {
+            inner,
+            accumulator: vec![],
+        }
     }
 }
 
-impl<R> Read for EscapeReader<'_, R> where R:Read {
+impl<R> Read for EscapeReader<'_, R>
+where
+    R: Read,
+{
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let accumulator_length = min(buf.len(), self.accumulator.len());
 
@@ -32,7 +44,10 @@ impl<R> Read for EscapeReader<'_, R> where R:Read {
 
         let stream_length = self.inner.read(&mut buf[accumulator_length..])?;
         let size = accumulator_length + stream_length;
-        let escape_chars_count = buf[accumulator_length..size].iter().filter(|b| **b == 0 || **b == 0xFF).count();
+        let escape_chars_count = buf[accumulator_length..size]
+            .iter()
+            .filter(|b| **b == 0 || **b == 0xFF)
+            .count();
         let escaped_size = size + escape_chars_count;
         let mut shift = escape_chars_count;
         let mut next_skip = false;
@@ -66,7 +81,7 @@ impl<R> Read for EscapeReader<'_, R> where R:Read {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Read, empty};
+    use std::io::{empty, Read};
 
     #[test]
     fn test_escaping_without_escape_bytes_leaves_buffer_intact() {

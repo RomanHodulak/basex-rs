@@ -1,7 +1,7 @@
-use std::net::IpAddr;
-use crate::{Connection, DatabaseStream, Result};
 use crate::connection::Authenticated;
 use crate::resource::AsResource;
+use crate::{Connection, DatabaseStream, Result};
+use std::net::IpAddr;
 
 /// Writes argument values using a [`Connection`].
 ///
@@ -207,8 +207,8 @@ impl<'a> ToQueryArgument<'a> for IpAddr {
 
 #[cfg(test)]
 mod tests {
-    use test_case::test_case;
     use super::*;
+    use test_case::test_case;
 
     #[test_case(IpAddr::V4("125.0.0.1".parse().unwrap()), "125.0.0.1\0", "xs:string")]
     #[test_case("test", "test\0", "xs:string")]
@@ -229,7 +229,7 @@ mod tests {
     fn test_writing_values_as_query_argument<'a, T: ToQueryArgument<'a>>(
         value: T,
         expected_stream: &str,
-        expected_type: &str
+        expected_type: &str,
     ) {
         let mut connection = Connection::from_str("");
         let mut writer = ArgumentWriter(&mut connection);

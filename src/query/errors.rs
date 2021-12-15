@@ -29,7 +29,14 @@ impl QueryFailed {
         let message = raw[code_stop + 2..].to_owned();
         let file = raw[11..line_start].to_owned();
 
-        Self { raw, code, line, position, message, file }
+        Self {
+            raw,
+            code,
+            line,
+            position,
+            message,
+            file,
+        }
     }
 
     /// The unparsed error string.
@@ -99,14 +106,8 @@ mod tests {
             ),
         ];
 
-        for (
-            expected_raw,
-            expected_code,
-            expected_message,
-            expected_file,
-            expected_line,
-            expected_position
-        ) in dataset {
+        for (expected_raw, expected_code, expected_message, expected_file, expected_line, expected_position) in dataset
+        {
             let error = QueryFailed::new(expected_raw.to_owned());
 
             assert_eq!(expected_raw, error.raw());

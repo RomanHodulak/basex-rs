@@ -1,8 +1,8 @@
 use super::*;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::io::{Read, Write, copy};
 use circbuf::CircBuf;
+use std::cell::RefCell;
+use std::io::{copy, Read, Write};
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub(crate) struct MockStream {
@@ -16,7 +16,10 @@ impl MockStream {
         buffer.write_all(response).unwrap();
         buffer.write(&[0]).unwrap();
 
-        Self { buffer: Rc::new(RefCell::new(vec![])), response: buffer }
+        Self {
+            buffer: Rc::new(RefCell::new(vec![])),
+            response: buffer,
+        }
     }
 
     pub(crate) fn new(response: String) -> Self {

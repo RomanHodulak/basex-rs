@@ -79,18 +79,13 @@ impl Display for RawInfo {
 
 impl RawInfo {
     pub fn new(raw: String) -> Self {
-        Self {
-            raw
-        }
+        Self { raw }
     }
 
     fn duration_from_str(duration: &str) -> Duration {
         let v: Vec<&str> = duration.splitn(2, ' ').collect();
         let (time, unit) = (v[0], v[1]);
-        let unit: String = unit
-            .chars()
-            .take_while(|c| c.is_alphabetic())
-            .collect();
+        let unit: String = unit.chars().take_while(|c| c.is_alphabetic()).collect();
         let time = f64::from_str(time).unwrap();
 
         match unit.as_str() {
@@ -119,7 +114,8 @@ impl RawInfo {
     }
 
     fn usize_from(&self, header: &str) -> usize {
-        let s: String = self.string_from(header)
+        let s: String = self
+            .string_from(header)
             .chars()
             .take_while(|c| c.is_ascii_digit())
             .collect();
@@ -181,7 +177,11 @@ impl Info for RawInfo {
         let header = "Compiling:\n- ";
         let start = self.raw.find(header).unwrap() + header.len();
         let stop = self.raw[start..].find("\n\n").unwrap();
-        self.raw[start..start + stop].to_owned().split("\n- ").map(|v| v.to_owned()).collect()
+        self.raw[start..start + stop]
+            .to_owned()
+            .split("\n- ")
+            .map(|v| v.to_owned())
+            .collect()
     }
 }
 
@@ -215,7 +215,8 @@ Write Locking: (none)
 Query executed in 398.5 ms.
 "#;
 
-    #[macro_export] macro_rules! assert_query_info {
+    #[macro_export]
+    macro_rules! assert_query_info {
         ($info:expr) => {
             use std::time::Duration;
             let info = $info;
@@ -226,14 +227,17 @@ Query executed in 398.5 ms.
             assert_eq!(Duration::from_micros(0090), info.evaluating_time());
             assert_eq!(Duration::from_micros(4790), info.printing_time());
             assert_eq!(Duration::from_micros(398500), info.total_time());
-            assert_eq!(vec![
-                "rewrite context value to document-node() item: \
+            assert_eq!(
+                vec![
+                    "rewrite context value to document-node() item: \
                 . -> db:open-pre(\"d601a46\", 0)",
-                "rewrite util:root(nodes) to document-node() item: \
+                    "rewrite util:root(nodes) to document-node() item: \
                 util:root(db:open-pre(\"d601a46\", 0)) -> db:open-pre(\"d601a46\", 0)",
-                "rewrite fn:count(items) to xs:integer item: \
+                    "rewrite fn:count(items) to xs:integer item: \
                 count(db:open-pre(\"d601a46\", 0)/None/*) -> 3",
-            ], info.compiling());
+                ],
+                info.compiling()
+            );
             assert_eq!(1, info.hits());
             assert_eq!(0, info.updated());
             assert_eq!(1, info.printed());
