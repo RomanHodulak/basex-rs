@@ -1,4 +1,4 @@
-pub mod analysis;
+pub mod compiler;
 pub mod serializer;
 
 mod argument;

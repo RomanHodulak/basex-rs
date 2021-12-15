@@ -6,7 +6,7 @@ use std::time::Duration;
 ///
 /// # Example
 /// ```
-/// # use basex::analysis::Info;
+/// # use basex::compiler::Info;
 /// # fn example(info: impl Info) {
 /// println!("Parsing: {:?}", info.parsing_time());
 /// println!("Compiling: {:?}", info.compiling_time());

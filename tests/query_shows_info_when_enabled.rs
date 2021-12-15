@@ -1,5 +1,5 @@
 use basex;
-use basex::analysis::Info;
+use basex::compiler::Info;
 use basex::{Client, ClientError};
 
 #[test]

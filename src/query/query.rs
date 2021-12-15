@@ -1,6 +1,6 @@
 use crate::connection::Authenticated;
-use crate::query::analysis::{Info, RawInfo};
 use crate::query::argument::{ArgumentWriter, ToQueryArgument};
+use crate::query::compiler::{Info, RawInfo};
 use crate::query::response::Response;
 use crate::query::serializer::Options;
 use crate::resource::AsResource;
@@ -327,7 +327,7 @@ where
     /// # Example
     ///
     /// ```
-    /// # use basex::{Query, DatabaseStream, WithInfo, analysis::Info, Result};
+    /// # use basex::{Query, DatabaseStream, WithInfo, compiler::Info, Result};
     /// # fn example<T: DatabaseStream>(mut query: Query<T, WithInfo>) -> Result<()> {
     /// let info = query.info()?;
     /// println!(
@@ -369,7 +369,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::query::analysis::tests::QUERY_INFO;
+    use crate::query::compiler::tests::QUERY_INFO;
     use crate::tests::FailingStream;
     use crate::{assert_query_info, ClientError};
     use std::io::{empty, Read};
