@@ -61,7 +61,7 @@ impl Error for ParseError {}
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Options {
     options: BTreeMap<String, Attribute>,
 }
@@ -69,6 +69,11 @@ pub struct Options {
 impl Options {
     fn new(options: BTreeMap<String, Attribute>) -> Self {
         Self { options }
+    }
+
+    /// Gets mutable reference to an attribute if it exists.
+    pub fn get(&self, key: &str) -> Option<&Attribute> {
+        self.options.get(key)
     }
 
     /// Gets mutable reference to an attribute if it exists.
@@ -140,7 +145,7 @@ impl FromStr for Options {
 }
 
 /// Attribute of the serializer.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Attribute {
     inner: String,
 }
@@ -242,6 +247,14 @@ mod tests {
     }
 
     #[test]
+    fn test_cloning_options_produces_same_options() -> result::Result<(), ParseError> {
+        let expected_options = Options::from_str("encoding=US-ASCII,indent=yes")?;
+        let actual_options = expected_options.clone();
+        assert_eq!(expected_options, actual_options);
+        Ok(())
+    }
+
+    #[test]
     fn test_yes_creates_enabled_attribute() {
         assert!(BooleanAttribute::yes().as_bool().unwrap().enabled());
     }
@@ -293,7 +306,7 @@ mod tests {
     }
 
     #[test]
-    fn test_inserting_attributes_into_options() {
+    fn test_attributes_can_be_inserted_into_options() {
         let mut options = Options::from_str("").unwrap();
         options.insert("indent", BooleanAttribute::no());
         options.insert("encoding", Attribute::new("UTF-8"));
@@ -301,11 +314,11 @@ mod tests {
     }
 
     #[test]
-    fn test_default_option() {
-        let mut options = Options::from_str("").unwrap();
-        options.insert("indent", BooleanAttribute::no());
-        options.insert("encoding", Attribute::new("UTF-8"));
-        assert_eq!("encoding=UTF-8,indent=no", &options.to_string());
+    fn test_attributes_can_be_read_from_options() -> result::Result<(), ParseError> {
+        let options = Options::from_str("encoding=UTF-8,indent=yes")?;
+        assert_eq!(*options.get("indent").unwrap(), BooleanAttribute::yes());
+        assert_eq!(*options.get("encoding").unwrap(), Attribute::new("UTF-8"));
+        Ok(())
     }
 
     #[test]
