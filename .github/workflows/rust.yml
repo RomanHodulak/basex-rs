@@ -86,7 +86,7 @@ jobs:
             ~/.cargo/git
             ~/.rustup/toolchains
             target
-          key: ${{ runner.os }}-x86_64-coverage-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-x86_64-${{ hashFiles('**/Cargo.toml') }}
 
       - name: 🐋 Set up database
         run: docker-compose up -d && sudo chown -R 1984:1984 docker
