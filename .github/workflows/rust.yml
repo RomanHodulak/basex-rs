@@ -38,6 +38,69 @@ jobs:
         env:
           RUSTFLAGS: "-Zinstrument-coverage"
 
+  build-mdv:
+    name: 🔨 Build with minimal dependency versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Clone repository
+        uses: actions/checkout@v2
+      - name: ⚡ Cache
+        uses: actions/cache@v2
+        continue-on-error: true
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.rustup/toolchains
+            target
+          key: ${{ runner.os }}-mdv-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: 📦 Install nightly Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          default: true
+      - name: 🔨 Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose --all-targets -Z minimal-versions
+        env:
+          RUSTFLAGS: "-Zinstrument-coverage"
+
+  build-msrv:
+    name: 🔨 Build with minimum supported Rust version
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📚 Clone repository
+        uses: actions/checkout@v2
+      - name: ⌛ Set toolchain version
+        id: date
+        run: echo "::set-output name=date::$(date --date '-6 month' +%Y-%m-%d)"
+      - name: ⚡ Cache
+        uses: actions/cache@v2
+        continue-on-error: true
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.rustup/toolchains
+            target
+          key: ${{ runner.os }}-msrv-${{ steps.date.outputs.date }}-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: 📦 Install nightly Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly-${{ steps.date.outputs.date }}
+          default: true
+      - name: 🔨 Build binary
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --verbose --all-targets
+        env:
+          RUSTFLAGS: "-Zinstrument-coverage"
+
   rustfmt:
     name: 🔍 Analyse using rustfmt
     runs-on: ubuntu-latest
