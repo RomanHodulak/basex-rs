@@ -23,6 +23,6 @@ md5 = "<=0.7.0,>=0.3.0"
 
 [dev-dependencies]
 matches = "<=0.1.9,>=0.1.0"
-rust-embed = "<6,>=5.2.0"
+rust-embed = "<7,>=6.3.0"
 circbuf = "0.2.0"
 test-case = "<2,>=0.3.2"

@@ -14,11 +14,11 @@ fn test_query_runs_on_created_database_with_added_resources() -> Result<(), Clie
     assert!(info.starts_with("Database 'b34db74' created"));
 
     let test_xml = Asset::get("sleeping.xml").unwrap();
-    let info = client.add("sleeping", &mut test_xml.as_ref())?;
+    let info = client.add("sleeping", &mut test_xml.data.as_ref())?;
     assert!(info.starts_with("Resource(s) added"));
 
     let test_xml = Asset::get("powder.xml").unwrap();
-    let info = client.add("powder", &mut test_xml.as_ref())?;
+    let info = client.add("powder", &mut test_xml.data.as_ref())?;
     assert!(info.starts_with("Resource(s) added"));
 
     let query = client.query("count(//artikl)")?.without_info()?;

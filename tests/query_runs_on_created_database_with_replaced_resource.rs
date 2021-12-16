@@ -14,11 +14,11 @@ fn test_query_runs_on_created_database_with_replaced_resource() -> Result<(), Cl
     assert!(info.starts_with("Database '0076e54' created"), "Actual info: {}", info);
 
     let test_xml = Asset::get("powder.xml").unwrap();
-    let info = client.add("sleeping", &mut test_xml.as_ref())?;
+    let info = client.add("sleeping", &mut test_xml.data.as_ref())?;
     assert!(info.starts_with("Resource(s) added"), "Actual info: {}", info);
 
     let test_xml = Asset::get("sleeping.xml").unwrap();
-    let info = client.replace("sleeping", &mut test_xml.as_ref())?;
+    let info = client.replace("sleeping", &mut test_xml.data.as_ref())?;
     assert!(info.starts_with("1 resource(s) replaced"), "Actual info: {}", info);
 
     let query = client.query("count(//artikl)")?.without_info()?;
