@@ -5,7 +5,7 @@ authors = ["Roman Hodulák <hodulakr@gmail.com>"]
 edition = "2018"
 license = "ISC"
 description = "A client library for BaseX XQuery databases."
-repository = "https://github.com/RomanHodulak/basex_client"
+repository = "https://github.com/RomanHodulak/basex-rs"
 readme = "README.md"
 categories = ["database"]
 keywords = ["database", "basex", "xml", "xquery", "xpath"]
@@ -19,10 +19,10 @@ include = [
 rustdoc-args = ["--document-private-items"]
 
 [dependencies]
-md5 = "0.6.1"
+md5 = "<=0.7.0,>=0.3.0"
 
 [dev-dependencies]
-matches = "0.1.8"
-rust-embed = "5.9.0"
+matches = "<=0.1.9,>=0.1.0"
+rust-embed = "<6,>=5.2.0"
 circbuf = "0.2.0"
-test-case = "1.2.1"
+test-case = "<2,>=0.3.2"
