@@ -42,15 +42,15 @@ impl Error for ParseError {}
 /// let mut options = Options::from_str("encoding=US-ASCII,indent=yes")?;
 ///
 /// // Change indent option
-/// let mut indent = options.get_mut("indent").unwrap().as_bool()?;
-/// assert!(indent.enabled());
-/// indent.disable();
-/// assert!(!indent.enabled());
+/// let indent = options.get("indent").unwrap();
+/// assert!(indent.as_bool()?);
+/// let indent = options.set("indent", false);
+/// assert!(!indent.as_bool()?);
 ///
 /// // Change encoding option
-/// let mut encoding = options.get_mut("encoding").unwrap().as_text()?;
+/// let encoding = options.get("encoding").unwrap();
 /// assert_eq!("US-ASCII", encoding.as_str());
-/// encoding.change("UTF-8");
+/// let encoding = options.set("encoding", "UTF-8");
 /// assert_eq!("UTF-8", encoding.as_str());
 ///
 /// // Final state
@@ -76,18 +76,13 @@ impl Options {
         self.options.get(key)
     }
 
-    /// Gets mutable reference to an attribute if it exists.
-    pub fn get_mut(&mut self, key: &str) -> Option<&mut Attribute> {
-        self.options.get_mut(key)
-    }
-
     /// Inserts new attribute value.
-    pub fn insert(&mut self, key: &str, value: Attribute) -> &mut Attribute {
-        self.options.insert(key.to_owned(), value);
-        self.get_mut(key).unwrap()
+    pub fn set(&mut self, key: &str, value: impl ToAttribute) -> &Attribute {
+        self.options.insert(key.to_owned(), value.to_attribute());
+        self.get(key).unwrap()
     }
 
-    /// Saves the options to the database for current session.
+    /// Saves the options to the server serializer for current session.
     pub fn save<T: DatabaseStream>(&self, client: Client<T>) -> Result<Client<T>> {
         let (client, _) = client
             .execute(&format!("SET SERIALIZER {}", self.to_string()))?
@@ -124,7 +119,7 @@ impl FromStr for Options {
                 continue;
             }
             if x == ',' {
-                options.insert(tuple.0.to_owned(), Attribute::new(&tuple.1));
+                options.insert(tuple.0.to_owned(), Attribute::from_str(&tuple.1)?);
                 tuple.0.clear();
                 tuple.1.clear();
                 key_complete = false;
@@ -137,10 +132,26 @@ impl FromStr for Options {
             }
         }
         if !tuple.0.is_empty() {
-            options.insert(tuple.0.to_owned(), Attribute::new(&tuple.1));
+            options.insert(tuple.0.to_owned(), Attribute::from_str(&tuple.1)?);
         }
 
         Ok(Options::new(options))
+    }
+}
+
+pub trait ToAttribute {
+    fn to_attribute(&self) -> Attribute;
+}
+
+impl ToAttribute for bool {
+    fn to_attribute(&self) -> Attribute {
+        Attribute::from_str(if *self { "yes" } else { "no" }).unwrap()
+    }
+}
+
+impl ToAttribute for &str {
+    fn to_attribute(&self) -> Attribute {
+        Attribute::from_str(self).unwrap()
     }
 }
 
@@ -150,73 +161,27 @@ pub struct Attribute {
     inner: String,
 }
 
-/// [`Attribute`] represented as a boolean.
-///
-/// [`Attribute`]: self::Attribute
-#[derive(Debug)]
-pub struct BooleanAttribute<'a>(&'a mut Attribute);
-
-/// [`Attribute`] represented as a textual.
-///
-/// [`Attribute`]: self::Attribute
-#[derive(Debug)]
-pub struct TextualAttribute<'a>(&'a mut Attribute);
-
 impl Attribute {
-    /// Creates new attribute with inner value.
-    pub fn new(inner: &str) -> Self {
-        Self {
-            inner: inner.to_owned(),
-        }
-    }
-
-    /// Wraps this attribute as textual.
-    pub fn as_text(&mut self) -> result::Result<TextualAttribute, ParseError> {
-        Ok(TextualAttribute(self))
-    }
-
-    /// Wraps this attribute as boolean.
-    pub fn as_bool(&mut self) -> result::Result<BooleanAttribute, ParseError> {
-        if self.inner != "yes" && self.inner != "no" {
-            return Err(ParseError::new(&self.inner));
-        }
-        Ok(BooleanAttribute(self))
-    }
-}
-
-impl TextualAttribute<'_> {
+    /// Returns this attribute as str.
     pub fn as_str(&self) -> &str {
-        self.0.inner.as_str()
+        self.inner.as_str()
     }
 
-    pub fn change(&mut self, value: &str) {
-        self.0.inner = value.to_owned();
+    /// Returns this attribute as boolean.
+    pub fn as_bool(&self) -> result::Result<bool, ParseError> {
+        match self.inner.as_str() {
+            "yes" => Ok(true),
+            "no" => Ok(false),
+            _ => Err(ParseError::new(&self.inner)),
+        }
     }
 }
 
-impl BooleanAttribute<'_> {
-    pub fn yes() -> Attribute {
-        Attribute::new("yes")
-    }
+impl FromStr for Attribute {
+    type Err = ParseError;
 
-    pub fn no() -> Attribute {
-        Attribute::new("no")
-    }
-
-    pub fn enable(&mut self) {
-        self.0.inner = "yes".to_owned();
-    }
-
-    pub fn disable(&mut self) {
-        self.0.inner = "no".to_owned();
-    }
-
-    pub fn enabled(&self) -> bool {
-        match self.0.inner.as_str() {
-            "yes" => true,
-            "no" => false,
-            other => panic!("Expected yes/no, got: {}", other),
-        }
+    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
+        Ok(Self { inner: s.to_owned() })
     }
 }
 
@@ -231,22 +196,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_enable_creates_enabled_attribute() {
-        let mut attr = BooleanAttribute::no();
-        let mut attr = attr.as_bool().unwrap();
-        attr.enable();
-        assert!(attr.enabled());
-    }
-
-    #[test]
-    fn test_disable_creates_disabled_attribute() {
-        let mut attr = BooleanAttribute::yes();
-        let mut attr = attr.as_bool().unwrap();
-        attr.disable();
-        assert!(!attr.enabled());
-    }
-
-    #[test]
     fn test_cloning_options_produces_same_options() -> result::Result<(), ParseError> {
         let expected_options = Options::from_str("encoding=US-ASCII,indent=yes")?;
         let actual_options = expected_options.clone();
@@ -255,24 +204,21 @@ mod tests {
     }
 
     #[test]
-    fn test_yes_creates_enabled_attribute() {
-        assert!(BooleanAttribute::yes().as_bool().unwrap().enabled());
+    fn test_true_attribute_as_bool_is_true() {
+        assert!(true.to_attribute().as_bool().unwrap());
     }
 
     #[test]
-    fn test_no_creates_disabled_attribute() {
-        assert!(!BooleanAttribute::no().as_bool().unwrap().enabled());
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_non_boolean_panics_enabled() {
-        BooleanAttribute(&mut Attribute::new("test")).enabled();
+    fn test_false_attribute_as_bool_is_false() {
+        assert!(!false.to_attribute().as_bool().unwrap());
     }
 
     #[test]
     fn test_non_boolean_fails_as_bool() {
-        Attribute::new("test").as_bool().expect_err("Parsing must fail");
+        Attribute::from_str("test")
+            .unwrap()
+            .as_bool()
+            .expect_err("Parsing must fail");
     }
 
     #[test]
@@ -292,32 +238,22 @@ mod tests {
 
     #[test]
     fn test_attribute_formats_as_debug() {
-        format!("{:?}", Attribute::new(""));
-    }
-
-    #[test]
-    fn test_textual_attribute_formats_as_debug() {
-        format!("{:?}", Attribute::new("").as_text().unwrap());
-    }
-
-    #[test]
-    fn test_boolean_attribute_formats_as_debug() {
-        format!("{:?}", BooleanAttribute::yes().as_bool().unwrap());
+        format!("{:?}", Attribute::from_str("").unwrap());
     }
 
     #[test]
     fn test_attributes_can_be_inserted_into_options() {
         let mut options = Options::from_str("").unwrap();
-        options.insert("indent", BooleanAttribute::no());
-        options.insert("encoding", Attribute::new("UTF-8"));
+        options.set("indent", false);
+        options.set("encoding", "UTF-8");
         assert_eq!("encoding=UTF-8,indent=no", &options.to_string());
     }
 
     #[test]
     fn test_attributes_can_be_read_from_options() -> result::Result<(), ParseError> {
         let options = Options::from_str("encoding=UTF-8,indent=yes")?;
-        assert_eq!(*options.get("indent").unwrap(), BooleanAttribute::yes());
-        assert_eq!(*options.get("encoding").unwrap(), Attribute::new("UTF-8"));
+        assert_eq!(*options.get("indent").unwrap(), true.to_attribute());
+        assert_eq!(*options.get("encoding").unwrap(), Attribute::from_str("UTF-8").unwrap());
         Ok(())
     }
 
@@ -325,14 +261,14 @@ mod tests {
     fn test_changing_value_changes_options() -> result::Result<(), ParseError> {
         let mut options = Options::from_str("encoding=US-ASCII,indent=yes")?;
 
-        let mut indent = options.get_mut("indent").unwrap().as_bool()?;
-        assert!(indent.enabled());
-        indent.disable();
-        assert!(!indent.enabled());
+        let indent = options.get("indent").unwrap();
+        assert!(indent.as_bool()?);
+        let indent = options.set("indent", false);
+        assert!(!indent.as_bool()?);
 
-        let mut encoding = options.get_mut("encoding").unwrap().as_text()?;
+        let encoding = options.get("encoding").unwrap();
         assert_eq!("US-ASCII", encoding.as_str());
-        encoding.change("UTF-8");
+        let encoding = options.set("encoding", "UTF-8");
         assert_eq!("UTF-8", encoding.as_str());
 
         assert_eq!("encoding=UTF-8,indent=no", &options.to_string());

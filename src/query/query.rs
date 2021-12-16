@@ -197,14 +197,14 @@ where
     /// # Example
     ///
     /// ```
-    /// # use basex::{Client, ClientError, serializer::BooleanAttribute};
+    /// # use basex::{Client, ClientError};
     /// # use std::io::Read;
     /// # fn main() -> Result<(), ClientError> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// let mut query = client.query("/")?.without_info()?;
     /// let mut options = query.options()?;
     /// let client = query.close()?;
-    /// options.insert("indent", BooleanAttribute::no());
+    /// options.set("indent", false);
     /// options.save(client)?;
     /// # Ok(())
     /// # }
