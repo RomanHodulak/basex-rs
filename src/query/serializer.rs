@@ -1,9 +1,11 @@
-use crate::{Client, DatabaseStream, Result};
+use crate::{Client, DatabaseStream};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::result;
 use std::str::FromStr;
+
+type Result<T> = result::Result<T, ParseError>;
 
 /// Error that have occurred when parsing the option's value.
 #[derive(Debug)]
@@ -21,7 +23,7 @@ impl ParseError {
 
 impl Display for ParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("expected boolean option, got: {}", self.value))
+        f.write_str(&format!("expected yes/no, got: {}", self.value))
     }
 }
 
@@ -38,52 +40,53 @@ impl Error for ParseError {}
 /// // Connect to the server
 /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
 ///
-/// // Create options from string (not loaded from the database)
-/// let mut options = Options::from_str("encoding=US-ASCII,indent=yes")?;
+/// // Create empty options
+/// let mut options = Options::empty();
 ///
-/// // Change indent option
-/// let indent = options.get("indent").unwrap();
-/// assert!(indent.as_bool()?);
-/// let indent = options.set("indent", false);
-/// assert!(!indent.as_bool()?);
+/// // Turn off indent option
+/// options.set("indent", false);
 ///
 /// // Change encoding option
-/// let encoding = options.get("encoding").unwrap();
-/// assert_eq!("US-ASCII", encoding.as_str());
-/// let encoding = options.set("encoding", "UTF-8");
-/// assert_eq!("UTF-8", encoding.as_str());
+/// options.set("encoding", "UTF-8");
 ///
-/// // Final state
-/// assert_eq!("encoding=UTF-8,indent=no", &options.to_string());
+/// // Check the options we just set
+/// let indent: bool = !options.get("indent").unwrap()?;
+/// assert!(indent);
+/// let encoding: &str = options.get("encoding").unwrap()?;
+/// assert_eq!("UTF-8", encoding);
 ///
-/// // Save the state of Options to database
+/// // Save the options to database
 /// let client = options.save(client)?;
 /// # Ok(())
 /// # }
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Options {
-    options: BTreeMap<String, Attribute>,
+    options: BTreeMap<String, String>,
 }
 
 impl Options {
-    fn new(options: BTreeMap<String, Attribute>) -> Self {
+    fn new(options: BTreeMap<String, String>) -> Self {
         Self { options }
     }
 
+    /// Creates empty options. The server sets its own defaults if this is saved.
+    pub fn empty() -> Self {
+        Self::new(BTreeMap::new())
+    }
+
     /// Gets mutable reference to an attribute if it exists.
-    pub fn get(&self, key: &str) -> Option<&Attribute> {
-        self.options.get(key)
+    pub fn get<'a, T: FromAttribute<'a>>(&'a self, key: &str) -> Option<Result<T>> {
+        self.options.get(key).map(|v| T::from_str(v))
     }
 
     /// Inserts new attribute value.
-    pub fn set(&mut self, key: &str, value: impl ToAttribute) -> &Attribute {
-        self.options.insert(key.to_owned(), value.to_attribute());
-        self.get(key).unwrap()
+    pub fn set(&mut self, key: &str, value: impl ToAttribute) {
+        self.options.insert(key.to_owned(), value.as_str().to_owned());
     }
 
     /// Saves the options to the server serializer for current session.
-    pub fn save<T: DatabaseStream>(&self, client: Client<T>) -> Result<Client<T>> {
+    pub fn save<T: DatabaseStream>(&self, client: Client<T>) -> crate::Result<Client<T>> {
         let (client, _) = client
             .execute(&format!("SET SERIALIZER {}", self.to_string()))?
             .close()?;
@@ -100,7 +103,7 @@ impl ToString for Options {
             }
             str.push_str(key);
             str.push('=');
-            str.push_str(&value.to_string());
+            str.push_str(value);
         }
         str
     }
@@ -109,8 +112,29 @@ impl ToString for Options {
 impl FromStr for Options {
     type Err = ParseError;
 
-    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
-        let mut options: BTreeMap<String, Attribute> = BTreeMap::new();
+    /// Reads the options as comma separated list of key=value pairs.
+    ///
+    /// Cannot result in `Err` state. The logic is infallible, read a key and stop at "`=`" then switch to value until
+    /// "`,`", repeat until the end.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::error::Error;
+    /// # use std::str::FromStr;
+    /// # use basex::serializer::Options;
+    /// # fn main() -> Result<(), Box<dyn Error>> {
+    /// // Create options from string (not loaded from the database)
+    /// let mut options = Options::from_str("encoding=US-ASCII,indent=yes")?;
+    /// let indent: bool = options.get("indent").unwrap()?;
+    /// assert!(indent);
+    /// let encoding: &str = options.get("encoding").unwrap()?;
+    /// assert_eq!("US-ASCII", encoding);
+    /// # Ok(())
+    /// # }
+    /// ```
+    fn from_str(s: &str) -> Result<Self> {
+        let mut options: BTreeMap<String, String> = BTreeMap::new();
         let mut tuple = (String::new(), String::new());
         let mut key_complete = false;
         for x in s.chars() {
@@ -119,7 +143,7 @@ impl FromStr for Options {
                 continue;
             }
             if x == ',' {
-                options.insert(tuple.0.to_owned(), Attribute::from_str(&tuple.1)?);
+                options.insert(tuple.0.to_owned(), tuple.1.to_owned());
                 tuple.0.clear();
                 tuple.1.clear();
                 key_complete = false;
@@ -132,62 +156,54 @@ impl FromStr for Options {
             }
         }
         if !tuple.0.is_empty() {
-            options.insert(tuple.0.to_owned(), Attribute::from_str(&tuple.1)?);
+            options.insert(tuple.0.to_owned(), tuple.1.to_owned());
         }
 
         Ok(Options::new(options))
     }
 }
 
-pub trait ToAttribute {
-    fn to_attribute(&self) -> Attribute;
+/// Creates the value from attribute string representation.
+pub trait FromAttribute<'a>: Sized {
+    // Returns the value from string
+    fn from_str(s: &'a str) -> Result<Self>;
 }
 
-impl ToAttribute for bool {
-    fn to_attribute(&self) -> Attribute {
-        Attribute::from_str(if *self { "yes" } else { "no" }).unwrap()
-    }
-}
-
-impl ToAttribute for &str {
-    fn to_attribute(&self) -> Attribute {
-        Attribute::from_str(self).unwrap()
-    }
-}
-
-/// Attribute of the serializer.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Attribute {
-    inner: String,
-}
-
-impl Attribute {
-    /// Returns this attribute as str.
-    pub fn as_str(&self) -> &str {
-        self.inner.as_str()
-    }
-
-    /// Returns this attribute as boolean.
-    pub fn as_bool(&self) -> result::Result<bool, ParseError> {
-        match self.inner.as_str() {
+impl FromAttribute<'_> for bool {
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
             "yes" => Ok(true),
             "no" => Ok(false),
-            _ => Err(ParseError::new(&self.inner)),
+            _ => Err(ParseError::new(s)),
         }
     }
 }
 
-impl FromStr for Attribute {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> result::Result<Self, Self::Err> {
-        Ok(Self { inner: s.to_owned() })
+impl<'a> FromAttribute<'a> for &'a str {
+    fn from_str(s: &'a str) -> Result<Self> {
+        Ok(s)
     }
 }
 
-impl ToString for Attribute {
-    fn to_string(&self) -> String {
-        self.inner.clone()
+/// Converts the value to attribute string representation.
+pub trait ToAttribute {
+    /// Returns this value as string.
+    fn as_str(&self) -> &str;
+}
+
+impl ToAttribute for bool {
+    fn as_str(&self) -> &str {
+        if *self {
+            "yes"
+        } else {
+            "no"
+        }
+    }
+}
+
+impl ToAttribute for &str {
+    fn as_str(&self) -> &str {
+        self
     }
 }
 
@@ -196,7 +212,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cloning_options_produces_same_options() -> result::Result<(), ParseError> {
+    fn test_cloning_options_produces_same_options() -> Result<()> {
         let expected_options = Options::from_str("encoding=US-ASCII,indent=yes")?;
         let actual_options = expected_options.clone();
         assert_eq!(expected_options, actual_options);
@@ -205,20 +221,20 @@ mod tests {
 
     #[test]
     fn test_true_attribute_as_bool_is_true() {
-        assert!(true.to_attribute().as_bool().unwrap());
+        let test: bool = FromAttribute::from_str(true.as_str()).unwrap();
+        assert!(test);
     }
 
     #[test]
     fn test_false_attribute_as_bool_is_false() {
-        assert!(!false.to_attribute().as_bool().unwrap());
+        let test: bool = FromAttribute::from_str(false.as_str()).unwrap();
+        assert!(!test);
     }
 
     #[test]
-    fn test_non_boolean_fails_as_bool() {
-        Attribute::from_str("test")
-            .unwrap()
-            .as_bool()
-            .expect_err("Parsing must fail");
+    #[should_panic]
+    fn test_non_boolean_str_panics_as_bool() {
+        let _: bool = FromAttribute::from_str("test").unwrap();
     }
 
     #[test]
@@ -232,13 +248,13 @@ mod tests {
     }
 
     #[test]
-    fn test_options_formats_as_debug() {
-        format!("{:?}", Options::new(BTreeMap::new()));
+    fn test_options_empty_has_no_attributes() {
+        format!("{:?}", Options::empty());
     }
 
     #[test]
-    fn test_attribute_formats_as_debug() {
-        format!("{:?}", Attribute::from_str("").unwrap());
+    fn test_options_formats_as_debug() {
+        format!("{:?}", Options::empty());
     }
 
     #[test]
@@ -250,26 +266,28 @@ mod tests {
     }
 
     #[test]
-    fn test_attributes_can_be_read_from_options() -> result::Result<(), ParseError> {
+    fn test_attributes_can_be_read_from_options() -> Result<()> {
         let options = Options::from_str("encoding=UTF-8,indent=yes")?;
-        assert_eq!(*options.get("indent").unwrap(), true.to_attribute());
-        assert_eq!(*options.get("encoding").unwrap(), Attribute::from_str("UTF-8").unwrap());
+        assert_eq!(options.get::<bool>("indent").unwrap()?, true);
+        assert_eq!(options.get::<&str>("encoding").unwrap()?, "UTF-8");
         Ok(())
     }
 
     #[test]
-    fn test_changing_value_changes_options() -> result::Result<(), ParseError> {
+    fn test_changing_value_changes_options() -> Result<()> {
         let mut options = Options::from_str("encoding=US-ASCII,indent=yes")?;
 
-        let indent = options.get("indent").unwrap();
-        assert!(indent.as_bool()?);
-        let indent = options.set("indent", false);
-        assert!(!indent.as_bool()?);
+        let indent: bool = options.get("indent").unwrap()?;
+        assert!(indent);
+        options.set("indent", false);
+        let indent: bool = options.get("indent").unwrap()?;
+        assert!(!indent);
 
-        let encoding = options.get("encoding").unwrap();
-        assert_eq!("US-ASCII", encoding.as_str());
-        let encoding = options.set("encoding", "UTF-8");
-        assert_eq!("UTF-8", encoding.as_str());
+        let encoding: &str = options.get("encoding").unwrap()?;
+        assert_eq!("US-ASCII", encoding);
+        options.set("encoding", "UTF-8");
+        let encoding: &str = options.get("encoding").unwrap()?;
+        assert_eq!("UTF-8", encoding);
 
         assert_eq!("encoding=UTF-8,indent=no", &options.to_string());
         Ok(())
