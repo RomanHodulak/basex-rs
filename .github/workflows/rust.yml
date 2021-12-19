@@ -34,7 +34,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose --all-targets
+          args: --all-targets
         env:
           RUSTFLAGS: "-Zinstrument-coverage"
 
@@ -64,7 +64,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose --all-targets -Z minimal-versions
+          args: --all-targets -Z minimal-versions
         env:
           RUSTFLAGS: "-Zinstrument-coverage"
 
@@ -97,7 +97,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --verbose --all-targets
+          args: --all-targets
         env:
           RUSTFLAGS: "-Zinstrument-coverage"
 
@@ -117,7 +117,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --all -- --verbose --check
+          args: --all -- --check
 
   clippy:
     name: 🔍 Analyse using clippy
