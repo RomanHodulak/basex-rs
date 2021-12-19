@@ -164,6 +164,18 @@ where
     }
 }
 
+/// Contains [`Connection`]. Call [`HasConnection::connection`] to get mutable handle to use [`Connection`].
+///
+/// [`Connection`]: self::Connection
+/// [`HasConnection::connection`]: self::HasConnection::connection
+pub(crate) trait HasConnection<T: DatabaseStream> {
+    /// Returns mutable reference to wrapped [`Connection`]. This is useful to make low-level calls to the server
+    /// protocol but can result in unexpected state changes when used improperly.
+    ///
+    /// [`Connection`]: self::Connection
+    fn connection(&mut self) -> &mut Connection<T, Authenticated>;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

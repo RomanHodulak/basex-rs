@@ -1,8 +1,7 @@
-use crate::connection::Authenticated;
+use crate::connection::{Authenticated, HasConnection};
 use crate::errors::ClientError;
 use crate::query::QueryFailed;
-use crate::{Client, Connection, DatabaseStream, Query, Result};
-use std::borrow::BorrowMut;
+use crate::{Connection, DatabaseStream, Query, Result};
 use std::io::Read;
 
 /// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
@@ -105,10 +104,11 @@ where
             }
         }
     }
+}
 
+impl<T: DatabaseStream, HasInfo> HasConnection<T> for Response<T, HasInfo> {
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
-        let client: &mut Client<T> = self.query.borrow_mut();
-        client.borrow_mut()
+        self.query.connection()
     }
 }
 
@@ -172,7 +172,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ClientError;
+    use crate::{Client, ClientError};
 
     #[test]
     fn test_reading_result_from_response() {

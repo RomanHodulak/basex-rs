@@ -1,9 +1,8 @@
 use crate::client::Response;
-use crate::connection::Authenticated;
+use crate::connection::{Authenticated, HasConnection};
 use crate::query::{WithInfo, WithoutInfo};
 use crate::resource::AsResource;
 use crate::{Connection, DatabaseStream, Query, Result};
-use std::borrow::{Borrow, BorrowMut};
 use std::marker::PhantomData;
 use std::net::TcpStream;
 
@@ -291,14 +290,8 @@ impl<T: DatabaseStream> Clone for Client<T> {
     }
 }
 
-impl<T: DatabaseStream> Borrow<Connection<T, Authenticated>> for Client<T> {
-    fn borrow(&self) -> &Connection<T, Authenticated> {
-        &self.connection
-    }
-}
-
-impl<T: DatabaseStream> BorrowMut<Connection<T, Authenticated>> for Client<T> {
-    fn borrow_mut(&mut self) -> &mut Connection<T, Authenticated> {
+impl<T: DatabaseStream> HasConnection<T> for Client<T> {
+    fn connection(&mut self) -> &mut Connection<T, Authenticated> {
         &mut self.connection
     }
 }
@@ -348,7 +341,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::MockStream;
     use crate::ClientError;
 
     impl<T> Client<T>
@@ -368,11 +360,6 @@ mod tests {
     #[test]
     fn test_clones() {
         let _ = Client::new(Connection::from_str("")).clone();
-    }
-
-    #[test]
-    fn test_borrows_as_connection() {
-        let _: &Connection<MockStream, Authenticated> = Client::new(Connection::from_str("test")).borrow();
     }
 
     #[test]

@@ -1,7 +1,6 @@
-use crate::connection::Authenticated;
+use crate::connection::{Authenticated, HasConnection};
 use crate::errors::ClientError::CommandFailed;
 use crate::{Client, Connection, DatabaseStream, Result};
-use std::borrow::BorrowMut;
 use std::io::Read;
 
 /// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
@@ -102,9 +101,11 @@ where
             false => Err(CommandFailed { message: info }),
         }
     }
+}
 
+impl<T: DatabaseStream> HasConnection<T> for Response<T> {
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
-        self.client.borrow_mut()
+        self.client.connection()
     }
 }
 

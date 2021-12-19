@@ -1,11 +1,10 @@
-use crate::connection::Authenticated;
+use crate::connection::{Authenticated, HasConnection};
 use crate::query::argument::{ArgumentWriter, ToQueryArgument};
 use crate::query::compiler::{Info, RawInfo};
 use crate::query::response::Response;
 use crate::query::serializer::Options;
 use crate::resource::AsResource;
 use crate::{Client, Connection, DatabaseStream, Result};
-use std::borrow::{Borrow, BorrowMut};
 use std::marker::PhantomData;
 use std::str::FromStr;
 
@@ -114,7 +113,7 @@ where
     /// # }
     /// ```
     pub fn close(mut self) -> Result<Client<T>> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Close as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
         connection.get_response()?;
@@ -148,7 +147,7 @@ where
     /// [`with_value`]: self::ArgumentWithOptionalValue::with_value
     /// [`without_value`]: self::ArgumentWithOptionalValue::without_value
     pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T, HasInfo>> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Bind as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
         connection.send_arg(&mut name.as_bytes())?;
@@ -186,7 +185,7 @@ where
     ///
     /// [`Read`]: std::io::Read
     pub fn execute(mut self) -> Result<Response<T, HasInfo>> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Execute as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
         Ok(Response::new(self))
@@ -209,7 +208,7 @@ where
     /// # Ok(())
     /// # }
     pub fn options(&mut self) -> Result<Options> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Options as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
         let response = self.connection().get_response()?;
@@ -243,7 +242,7 @@ where
     /// # }
     /// ```
     pub fn context<'a>(&mut self, value: impl AsResource<'a>) -> Result<&mut Self> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Context as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
         connection.send_arg(&mut value.into_read())?;
@@ -275,7 +274,7 @@ where
     /// # }
     /// ```
     pub fn updating(&mut self) -> Result<bool> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Updating as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
 
@@ -285,9 +284,11 @@ where
             other => panic!("Expected boolean string, got \"{}\"", other),
         }
     }
+}
 
+impl<T: DatabaseStream, HasInfo> HasConnection<T> for Query<T, HasInfo> {
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
-        self.client.borrow_mut()
+        self.client.connection()
     }
 }
 
@@ -341,28 +342,10 @@ where
     ///
     /// [`Info`]: super::analysis::Info
     pub fn info(&mut self) -> Result<impl Info> {
-        let connection: &mut Connection<T, Authenticated> = self.client.borrow_mut();
+        let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Info as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
         Ok(RawInfo::new(self.connection().get_response()?))
-    }
-}
-
-impl<T, HasInfo> Borrow<Client<T>> for Query<T, HasInfo>
-where
-    T: DatabaseStream,
-{
-    fn borrow(&self) -> &Client<T> {
-        &self.client
-    }
-}
-
-impl<T, HasInfo> BorrowMut<Client<T>> for Query<T, HasInfo>
-where
-    T: DatabaseStream,
-{
-    fn borrow_mut(&mut self) -> &mut Client<T> {
-        &mut self.client
     }
 }
 
@@ -370,7 +353,6 @@ where
 mod tests {
     use super::*;
     use crate::query::compiler::tests::QUERY_INFO;
-    use crate::tests::FailingStream;
     use crate::{assert_query_info, ClientError};
     use std::io::{empty, Read};
 
@@ -399,11 +381,6 @@ mod tests {
             "{:?}",
             Query::with_info("".to_owned(), Client::new(Connection::failing()))
         );
-    }
-
-    #[test]
-    fn test_borrows_as_client() {
-        let _: &Client<FailingStream> = Query::with_info("".to_owned(), Client::new(Connection::failing())).borrow();
     }
 
     #[test]
