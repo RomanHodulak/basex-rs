@@ -12,6 +12,9 @@ jobs:
     steps:
       - name: 📚 Clone repository
         uses: actions/checkout@v2
+      - name: ⌛ Get cache key
+        id: date
+        run: echo "::set-output name=date::$(date +%Y-%m-%d)"
       - name: ⚡ Cache
         uses: actions/cache@v2
         continue-on-error: true
@@ -22,7 +25,7 @@ jobs:
             ~/.rustup/toolchains
             target
             Cargo.lock
-          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-${{ steps.date.outputs.date }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: 📦 Install nightly Rust
         uses: actions-rs/toolchain@v1
@@ -44,6 +47,9 @@ jobs:
     steps:
       - name: 📚 Clone repository
         uses: actions/checkout@v2
+      - name: ⌛ Get cache key
+        id: date
+        run: echo "::set-output name=date::$(date +%Y-%m-%d)"
       - name: ⚡ Cache
         uses: actions/cache@v2
         continue-on-error: true
@@ -53,7 +59,7 @@ jobs:
             ~/.cargo/git
             ~/.rustup/toolchains
             target
-          key: ${{ runner.os }}-mdv-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-mdv-${{ steps.date.outputs.date }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: 📦 Install nightly Rust
         uses: actions-rs/toolchain@v1
@@ -126,6 +132,9 @@ jobs:
     steps:
       - name: 📚 Clone repository
         uses: actions/checkout@v2
+      - name: ⌛ Get cache key
+        id: date
+        run: echo "::set-output name=date::$(date +%Y-%m-%d)"
       - name: ⚡ Cache
         uses: actions/cache@v2
         continue-on-error: true
@@ -136,7 +145,7 @@ jobs:
             ~/.rustup/toolchains
             target
             Cargo.lock
-          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-${{ steps.date.outputs.date }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: 📦 Install nightly Rust with clippy
         uses: actions-rs/toolchain@v1
@@ -157,6 +166,9 @@ jobs:
     steps:
       - name: 📚 Clone repository
         uses: actions/checkout@v2
+      - name: ⌛ Get cache key
+        id: date
+        run: echo "::set-output name=date::$(date +%Y-%m-%d)"
       - name: ⚡ Cache
         uses: actions/cache@v2
         continue-on-error: true
@@ -167,7 +179,7 @@ jobs:
             ~/.rustup/toolchains
             target
             Cargo.lock
-          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-${{ steps.date.outputs.date }}-${{ hashFiles('**/Cargo.toml') }}
 
       - name: 🐋 Set up database
         run: docker-compose up -d && sudo chown -R 1984:1984 docker
