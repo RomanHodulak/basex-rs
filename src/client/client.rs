@@ -19,6 +19,7 @@ enum Command {
 ///
 /// [`with_input`]: self::CommandWithOptionalInput::with_input
 /// [`without_input`]: self::CommandWithOptionalInput::without_input
+#[derive(Debug)]
 pub struct CommandWithOptionalInput<'a, T>
 where
     T: DatabaseStream,
@@ -174,7 +175,7 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub fn create(&mut self, name: &str) -> Result<CommandWithOptionalInput<T>> {
+    pub fn create(&mut self, name: &str) -> Result<CommandWithOptionalInput<'_, T>> {
         self.connection.send_cmd(Command::Create as u8)?;
         self.connection.send_arg(&mut name.as_bytes())?;
         Ok(CommandWithOptionalInput::new(&mut self.connection))
@@ -296,6 +297,7 @@ impl<T: DatabaseStream> HasConnection<T> for Client<T> {
     }
 }
 
+#[derive(Debug)]
 pub struct QueryWithOptionalInfo<'a, T, R>
 where
     T: DatabaseStream,

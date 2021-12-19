@@ -1,3 +1,44 @@
+//! [Serialization](https://docs.basex.org/wiki/Serialization) parameters define how XQuery items and XML nodes will be
+//! serialized when returned to the client.
+//!
+//! The official parameters are defined in the
+//! [W3C XQuery Serialization 3.1](https://www.w3.org/TR/xslt-xquery-serialization-31) document.
+//!
+//! # Example
+//!
+//! ```
+//! use basex::Client;
+//! use basex::serializer::Options;
+//! # use std::error::Error;
+//!
+//! # fn main() -> Result<(), Box<dyn Error>> {
+//! // 1.a) Create empty options (server assumes default values)
+//! let options = Options::empty();
+//!
+//! // 1.b) Get options from the server
+//! let client = Client::connect("localhost", 1984, "admin", "admin")?;
+//! let mut query = client.query("/")?.without_info()?;
+//! let mut options = query.options()?;
+//!
+//! // 2.a) Change options
+//! options.set("indent", false);
+//! options.set("encoding", "UTF-8");
+//!
+//! // 2.b) Read options
+//! if let Some(Ok(encoding)) = options.get::<&str>("encoding") {
+//!     println!("Encoding: {}", encoding);
+//! }
+//! println!("Indentation: {}", if options.get::<bool>("indent").unwrap()? { "on" } else { "off" });
+//!
+//! // 3. Save options to the server
+//! let client = options.save(query.close()?)?;
+//! # Ok(())
+//! # }
+//! ```
+//! Reading result from a [`Query`] would now be affected by the options. In this case the difference as apposed to the
+//! default would be that XML nodes are not indented from the beginning of a line.
+//!
+//! [`Query`]: super::Query
 use crate::{Client, DatabaseStream};
 use std::collections::BTreeMap;
 use std::error::Error;
@@ -165,7 +206,7 @@ impl FromStr for Options {
 
 /// Creates the value from attribute string representation.
 pub trait FromAttribute<'a>: Sized {
-    // Returns the value from string
+    /// Returns the value from string.
     fn from_str(s: &'a str) -> Result<Self>;
 }
 

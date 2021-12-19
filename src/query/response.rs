@@ -33,6 +33,7 @@ use std::io::Read;
 /// ```
 ///
 /// [`Read`]: std::io::Read
+#[derive(Debug)]
 pub struct Response<T, HasInfo>
 where
     T: DatabaseStream,

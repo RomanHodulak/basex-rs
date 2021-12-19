@@ -10,7 +10,7 @@ fn test_command_with_invalid_argument_fails() -> Result<(), ClientError> {
     let actual_error = response.close().err().unwrap();
     assert!(matches!(
         actual_error,
-        ClientError::CommandFailed { message } if message == "Database 'dfasds' was not found."
+        ClientError::CommandFailed(message) if message == "Database 'dfasds' was not found."
     ));
 
     Ok(())

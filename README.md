@@ -80,7 +80,7 @@ fn main() -> Result<(), ClientError> {
         .with_input("<Root><Text/><Lala/><Papa/></Root>")?;
     assert!(info.starts_with("Database 'lambada' created"));
 
-    let query = client.query("count(/Root/*)")?;
+    let query = client.query("count(/Root/*)")?.without_info()?;
 
     let mut result = String::new();
     let mut response = query.execute()?;

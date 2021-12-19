@@ -19,18 +19,18 @@ pub enum ClientError {
     /// The provided credentials for authorizing are invalid.
     Auth,
     /// The command was processed but failed to get the expected result.
-    CommandFailed { message: String },
+    CommandFailed(String),
     /// The query was processed but failed to get the expected result.
     QueryFailed(QueryFailed),
 }
 
 impl Display for ClientError {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &*self {
             ClientError::Io(ref e) => e.fmt(f),
             ClientError::Utf8Parse(ref e) => e.fmt(f),
             ClientError::Auth => write!(f, "access denied"),
-            ClientError::CommandFailed { message } => write!(f, "{}", message),
+            ClientError::CommandFailed(message) => write!(f, "{}", message),
             ClientError::QueryFailed(q) => write!(f, "{}", q.raw()),
         }
     }
@@ -93,17 +93,13 @@ mod tests {
 
     #[test]
     fn test_command_failed_formats_as_debug() {
-        let error = ClientError::CommandFailed {
-            message: "error".to_owned(),
-        };
+        let error = ClientError::CommandFailed("error".to_owned());
         let _ = format!("{:?}", error);
     }
 
     #[test]
     fn test_command_failed_formats_as_empty() {
-        let error = ClientError::CommandFailed {
-            message: "error".to_owned(),
-        };
+        let error = ClientError::CommandFailed("error".to_owned());
         let _ = format!("{}", error);
     }
 

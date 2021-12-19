@@ -102,7 +102,7 @@ where
         if self.is_ok()? {
             Ok(info)
         } else {
-            Err(ClientError::CommandFailed { message: info })
+            Err(ClientError::CommandFailed(info))
         }
     }
 
@@ -297,7 +297,7 @@ mod tests {
         let mut connection = Connection::from_str("test_error\0\u{1}");
         let actual_error = connection.get_response().expect_err("Operation must fail");
 
-        assert!(matches!(actual_error, ClientError::CommandFailed{ message } if message == "test_error"));
+        assert!(matches!(actual_error, ClientError::CommandFailed(message) if message == "test_error"));
     }
 
     #[test]

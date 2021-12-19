@@ -36,6 +36,7 @@ enum Command {
 ///
 /// [`with_input`]: self::CommandWithOptionalInput::with_input
 /// [`without_input`]: self::CommandWithOptionalInput::without_input
+#[derive(Debug)]
 pub struct ArgumentWithOptionalValue<'a, T, HasInfo>
 where
     T: DatabaseStream,
@@ -74,10 +75,9 @@ where
 
 /// Server query is composed of [XQuery](https://docs.basex.org/wiki/XQuery) code, which is immutable once created.
 ///
-/// The client may [`bind`] arguments, set [`context`] or modify [`options`] which influences the way result is
-/// generated.
+/// You may [`bind`] arguments, set [`context`] or modify [`options`] which influences the way result is generated.
 ///
-/// Furthermore, the client can [`execute`] the query, check for [`updating`] statements or read compiler [`info`].
+/// Furthermore, you can [`execute`] the query, check for [`updating`] statements or read compiler [`info`].
 ///
 /// [`bind`]: self::Query::bind
 /// [`context`]: self::Query::context
@@ -146,7 +146,7 @@ where
     ///
     /// [`with_value`]: self::ArgumentWithOptionalValue::with_value
     /// [`without_value`]: self::ArgumentWithOptionalValue::without_value
-    pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<T, HasInfo>> {
+    pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<'_, T, HasInfo>> {
         let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Bind as u8)?;
         connection.send_arg(&mut self.id.as_bytes())?;
@@ -259,9 +259,9 @@ where
     /// # Example
     ///
     /// ```
-    /// # use basex::{Client, ClientError};
-    /// # fn main() -> Result<(), ClientError> {
-    /// # let client = Client::connect("localhost", 1984, "admin", "admin")?;
+    /// # use basex::Client;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let client = Client::connect("localhost", 1984, "admin", "admin")?;
     ///
     /// let mut query = client.query("replace value of node /None with 1")?.without_info()?;
     /// assert!(query.updating()?);

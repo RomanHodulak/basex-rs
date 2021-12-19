@@ -9,7 +9,7 @@ fn test_command_without_open_database_fails() -> Result<(), ClientError> {
 
     let actual_error = client.add("lambada", "<test></test>").unwrap_err();
 
-    assert!(matches!(actual_error, ClientError::CommandFailed { message } if message == "No database opened."));
+    assert!(matches!(actual_error, ClientError::CommandFailed(message) if message == "No database opened."));
 
     Ok(())
 }

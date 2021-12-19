@@ -32,6 +32,7 @@ use std::io::Read;
 /// ```
 ///
 /// [`Read`]: std::io::Read
+#[derive(Debug)]
 pub struct Response<T>
 where
     T: DatabaseStream,
@@ -98,7 +99,7 @@ where
 
         match self.is_ok {
             true => Ok((self.client, info)),
-            false => Err(CommandFailed { message: info }),
+            false => Err(CommandFailed(info)),
         }
     }
 }
@@ -248,7 +249,7 @@ mod tests {
 
         assert!(matches!(
             actual_error,
-            ClientError::CommandFailed { message } if message == "test_error"
+            ClientError::CommandFailed(message) if message == "test_error"
         ));
     }
 

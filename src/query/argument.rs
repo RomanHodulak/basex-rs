@@ -8,11 +8,12 @@ use std::net::IpAddr;
 /// # Example
 /// ```
 /// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
-/// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<T>) -> Result<()> {
+/// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
 ///     writer.write("data")
 /// }
 /// ```
 /// [`Connection`]: crate::connection::Connection
+#[derive(Debug)]
 pub struct ArgumentWriter<'a, T: DatabaseStream>(pub &'a mut Connection<T, Authenticated>);
 
 impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
@@ -21,7 +22,7 @@ impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
     /// # Example
     /// ```
     /// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
-    /// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<T>) -> Result<()> {
+    /// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
     ///     writer.write("data")
     /// }
     /// ```
@@ -33,7 +34,7 @@ impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
 /// Makes this type able to be interpreted as XQuery argument value.
 pub trait ToQueryArgument<'a> {
     /// Writes this value using the given `writer` as an XQuery argument value.
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()>;
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()>;
 
     /// The type name of the XQuery representation.
     ///
@@ -46,7 +47,7 @@ pub trait ToQueryArgument<'a> {
 }
 
 impl<'a> ToQueryArgument<'a> for bool {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -56,7 +57,7 @@ impl<'a> ToQueryArgument<'a> for bool {
 }
 
 impl<'a> ToQueryArgument<'a> for u8 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -66,7 +67,7 @@ impl<'a> ToQueryArgument<'a> for u8 {
 }
 
 impl<'a> ToQueryArgument<'a> for i8 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -76,7 +77,7 @@ impl<'a> ToQueryArgument<'a> for i8 {
 }
 
 impl<'a> ToQueryArgument<'a> for u16 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -86,7 +87,7 @@ impl<'a> ToQueryArgument<'a> for u16 {
 }
 
 impl<'a> ToQueryArgument<'a> for i16 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -96,7 +97,7 @@ impl<'a> ToQueryArgument<'a> for i16 {
 }
 
 impl<'a> ToQueryArgument<'a> for u32 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -106,7 +107,7 @@ impl<'a> ToQueryArgument<'a> for u32 {
 }
 
 impl<'a> ToQueryArgument<'a> for i32 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -116,7 +117,7 @@ impl<'a> ToQueryArgument<'a> for i32 {
 }
 
 impl<'a> ToQueryArgument<'a> for u64 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -126,7 +127,7 @@ impl<'a> ToQueryArgument<'a> for u64 {
 }
 
 impl<'a> ToQueryArgument<'a> for i64 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -136,7 +137,7 @@ impl<'a> ToQueryArgument<'a> for i64 {
 }
 
 impl<'a> ToQueryArgument<'a> for f32 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -146,7 +147,7 @@ impl<'a> ToQueryArgument<'a> for f32 {
 }
 
 impl<'a> ToQueryArgument<'a> for f64 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.to_string().as_str().as_bytes())
     }
 
@@ -156,7 +157,7 @@ impl<'a> ToQueryArgument<'a> for f64 {
 }
 
 impl<'a> ToQueryArgument<'a> for &'a str {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.as_bytes())
     }
 
@@ -166,7 +167,7 @@ impl<'a> ToQueryArgument<'a> for &'a str {
 }
 
 impl<'a> ToQueryArgument<'a> for String {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.as_bytes())
     }
 
@@ -176,7 +177,7 @@ impl<'a> ToQueryArgument<'a> for String {
 }
 
 impl<'a, 'b, D: ToQueryArgument<'a>> ToQueryArgument<'a> for &'b D {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         (*self).write_xquery(writer)
     }
 
@@ -186,7 +187,7 @@ impl<'a, 'b, D: ToQueryArgument<'a>> ToQueryArgument<'a> for &'b D {
 }
 
 impl<'a, D: ToQueryArgument<'a>> ToQueryArgument<'a> for Option<D> {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         self.as_ref().unwrap().write_xquery(writer)
     }
 
@@ -196,7 +197,7 @@ impl<'a, D: ToQueryArgument<'a>> ToQueryArgument<'a> for Option<D> {
 }
 
 impl<'a> ToQueryArgument<'a> for IpAddr {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<T>) -> Result<()> {
+    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         self.to_string().write_xquery(writer)
     }
 
