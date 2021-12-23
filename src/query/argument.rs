@@ -46,115 +46,37 @@ pub trait ToQueryArgument<'a> {
     fn xquery_type() -> String;
 }
 
-impl<'a> ToQueryArgument<'a> for bool {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
+/// Macro dedicated to implement given type using its [`to_string`] method to encode.
+///
+/// [`to_string`]: std::string::ToString::to_string
+macro_rules! query_argument_using_to_string {
+    ($($t:ty as $name:expr),*) => {
+        $(impl<'a> ToQueryArgument<'a> for $t {
+            fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+                writer.write(&mut self.to_string().as_str().as_bytes())
+            }
 
-    fn xquery_type() -> String {
-        "xs:boolean".to_owned()
+            fn xquery_type() -> String {
+                $name.to_owned()
+            }
+        })*
     }
 }
 
-impl<'a> ToQueryArgument<'a> for u8 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:unsignedByte".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for i8 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:byte".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for u16 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:unsignedShort".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for i16 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:short".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for u32 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:unsignedInt".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for i32 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:int".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for u64 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:unsignedLong".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for i64 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:long".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for f32 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:float".to_owned()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for f64 {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        writer.write(&mut self.to_string().as_str().as_bytes())
-    }
-
-    fn xquery_type() -> String {
-        "xs:double".to_owned()
-    }
-}
+query_argument_using_to_string![
+    bool as "xs:boolean",
+    u8 as "xs:unsignedByte",
+    i8 as "xs:byte",
+    u16 as "xs:unsignedShort",
+    i16 as "xs:short",
+    u32 as "xs:unsignedInt",
+    i32 as "xs:int",
+    u64 as "xs:unsignedLong",
+    i64 as "xs:long",
+    f32 as "xs:float",
+    f64 as "xs:double",
+    IpAddr as "xs:string"
+];
 
 impl<'a> ToQueryArgument<'a> for &'a str {
     fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
@@ -188,21 +110,14 @@ impl<'a, 'b, D: ToQueryArgument<'a>> ToQueryArgument<'a> for &'b D {
 
 impl<'a, D: ToQueryArgument<'a>> ToQueryArgument<'a> for Option<D> {
     fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        self.as_ref().unwrap().write_xquery(writer)
+        match self.as_ref() {
+            Some(data) => data.write_xquery(writer),
+            None => "".write_xquery(writer),
+        }
     }
 
     fn xquery_type() -> String {
         D::xquery_type()
-    }
-}
-
-impl<'a> ToQueryArgument<'a> for IpAddr {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
-        self.to_string().write_xquery(writer)
-    }
-
-    fn xquery_type() -> String {
-        "xs:string".to_owned()
     }
 }
 
@@ -227,6 +142,7 @@ mod tests {
     #[test_case(5.5f64, "5.5\0", "xs:double")]
     #[test_case(&5.2f64, "5.2\0", "xs:double")]
     #[test_case(Some(true), "true\0", "xs:boolean")]
+    #[test_case(Option::<bool>::None, "\0", "xs:boolean")]
     fn test_writing_values_as_query_argument<'a, T: ToQueryArgument<'a>>(
         value: T,
         expected_stream: &str,
