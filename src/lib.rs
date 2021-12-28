@@ -1,10 +1,9 @@
 //! Client implementation of the open source XML database server and XQuery processor [BaseX].
 //!
-//! ## Example
+//! # Examples
 //! The following example creates database "lambada" with initial XML resource and counts all first-level child nodes
 //! of the `Root` node.
-//!
-//! ```rust
+//! ```
 //! use basex::{Client, ClientError};
 //! use std::io::Read;
 //!

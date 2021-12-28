@@ -3,10 +3,12 @@ use crate::{ClientError, DatabaseStream, Result};
 use std::io::{copy, Read};
 use std::marker::PhantomData;
 
-#[derive(Debug)]
+/// Connection state before authentication for the session.
+#[derive(Debug, Clone)]
 pub struct Unauthenticated;
 
-#[derive(Debug)]
+/// Connection state after successful authentication for the session.
+#[derive(Debug, Clone)]
 pub struct Authenticated;
 
 /// Responsible for low-level communication with the stream. It handles

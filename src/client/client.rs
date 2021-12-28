@@ -53,7 +53,8 @@ where
 ///
 /// Start by connecting to the database using [`Client::connect`].
 ///
-/// # Example
+/// # Examples
+///
 /// ```
 /// # use basex::{Client, ClientError, Connection};
 /// # use std::io::Read;
@@ -88,7 +89,7 @@ where
 impl Client<TcpStream> {
     /// Connects and authenticates to BaseX server using TCP stream.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, ClientError};
@@ -114,7 +115,7 @@ where
     /// Typically, you only need to use this method when using a custom connection. It is used heavily in tests, for
     /// example. For regular usage, refer to the [`Client::connect`] method.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, ClientError, Connection};
@@ -137,7 +138,7 @@ where
     ///
     /// Returns response which can be read using the [`Read`] trait.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, Result};
@@ -164,7 +165,7 @@ where
     /// * The `input` is a stream with valid XML.
     /// * More options can be controlled by setting [Create Options](http://docs.basex.org/wiki/Options#Create_Options)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, Result};
@@ -184,7 +185,7 @@ where
     /// Replaces resources in the currently opened database, addressed by `path`, with the XML document read from
     /// `input`, or adds new documents if no resource exists at the specified path.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, Result};
@@ -204,7 +205,7 @@ where
 
     /// Stores a binary file from `input` in the currently opened database under `path`. Overwrites existing resource.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, Result};
@@ -230,7 +231,7 @@ where
     /// disk first. Caching can be enforced by turning the `ADDCACHE` option on.
     /// * The `input` is a stream with valid XML.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, Result};
@@ -252,7 +253,7 @@ where
     ///
     /// You then need to make a statement about collecting compiler info using either [`with_info`] or [`without_info`].
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, Result};

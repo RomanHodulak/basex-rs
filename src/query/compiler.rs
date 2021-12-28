@@ -3,7 +3,8 @@
 //! The output of the compiler and profiler is only available when turned on when creating the query using
 //! [`with_info`]. It adds some overhead so don't use it unless you need [`Info`].
 //!
-//! # Example
+//! # Examples
+//!
 //! ```
 //! # use std::error::Error;
 //! use basex::{Client, compiler::Info};
@@ -50,7 +51,8 @@ use std::time::Duration;
 
 /// Provides compilation and profiling info about a [`Query`].
 ///
-/// # Example
+/// # Examples
+///
 /// ```
 /// # use basex::compiler::Info;
 /// # fn example(info: impl Info) {

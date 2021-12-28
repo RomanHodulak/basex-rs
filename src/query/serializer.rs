@@ -4,7 +4,7 @@
 //! The official parameters are defined in the
 //! [W3C XQuery Serialization 3.1](https://www.w3.org/TR/xslt-xquery-serialization-31) document.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```
 //! use basex::Client;
@@ -72,7 +72,7 @@ impl Error for ParseError {}
 
 /// Options for query [serializer](https://docs.basex.org/wiki/Serialization).
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// # use basex::{Client, serializer::Options, serializer::ParseError};
@@ -158,7 +158,7 @@ impl FromStr for Options {
     /// Cannot result in `Err` state. The logic is infallible, read a key and stop at "`=`" then switch to value until
     /// "`,`", repeat until the end.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use std::error::Error;

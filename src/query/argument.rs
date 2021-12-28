@@ -5,7 +5,8 @@ use std::net::IpAddr;
 
 /// Writes argument values using a [`Connection`].
 ///
-/// # Example
+/// # Examples
+///
 /// ```
 /// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
 /// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
@@ -19,7 +20,8 @@ pub struct ArgumentWriter<'a, T: DatabaseStream>(pub &'a mut Connection<T, Authe
 impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
     /// Writes bytes from the given reader as the argument's value.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```
     /// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
     /// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
@@ -38,7 +40,8 @@ pub trait ToQueryArgument<'a> {
 
     /// The type name of the XQuery representation.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```
     /// use basex::ToQueryArgument;
     /// assert_eq!("xs:string", String::xquery_type());

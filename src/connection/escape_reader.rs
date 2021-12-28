@@ -6,7 +6,7 @@ use std::io::Read;
 ///
 /// All bytes that have any special meaning get prefixed by a single `0xFF` byte.
 ///
-/// # Example
+/// # Examples
 /// ## Input
 /// `[0, 1, 2, 3, 4, 0xFF]`
 /// ## Output

@@ -7,7 +7,8 @@ use std::io::Read;
 /// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
 /// the [`Read`] trait.
 ///
-/// # Example
+/// # Examples
+///
 /// ```
 /// use basex::{Client, ClientError, Connection};
 /// use std::io::Read;
@@ -64,7 +65,8 @@ where
     /// # Panics
     /// Panics when the stream ends before result is fully streamed.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```
     /// use basex::{Client, ClientError, Connection};
     /// use std::io::Read;

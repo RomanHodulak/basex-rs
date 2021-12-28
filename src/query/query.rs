@@ -101,7 +101,7 @@ where
 {
     /// Deletes the query.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Query, DatabaseStream, Result};
@@ -124,7 +124,7 @@ where
     ///
     /// You then need to make a statement about its value using either [`with_value`] or [`without_value`].
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, ClientError};
@@ -158,7 +158,7 @@ where
     ///
     /// The response is readable using the [`Read`] trait.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, ClientError};
@@ -193,7 +193,7 @@ where
 
     /// Returns all query serialization options.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, ClientError};
@@ -220,7 +220,7 @@ where
     /// By default the context is set to currently opened database (if any). Setting context allows you to run query
     /// on a different data-set or without a database.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Client, ClientError};
@@ -256,7 +256,7 @@ where
     /// # Panics
     /// Panics when the response contains non-boolean value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::Client;
@@ -325,7 +325,7 @@ where
 
     /// Returns the query compilation and profiling [`Info`].
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # use basex::{Query, DatabaseStream, WithInfo, compiler::Info, Result};
