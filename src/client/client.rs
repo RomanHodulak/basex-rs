@@ -2,7 +2,7 @@ use crate::client::Response;
 use crate::connection::{Authenticated, HasConnection};
 use crate::query::{WithInfo, WithoutInfo};
 use crate::resource::AsResource;
-use crate::{Connection, DatabaseStream, Query, Result};
+use crate::{Connection, Query, Result, Stream};
 use std::marker::PhantomData;
 use std::net::TcpStream;
 
@@ -22,14 +22,14 @@ enum Command {
 #[derive(Debug)]
 pub struct CommandWithOptionalInput<'a, T>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     connection: &'a mut Connection<T, Authenticated>,
 }
 
 impl<'a, T> CommandWithOptionalInput<'a, T>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     fn new(connection: &'a mut Connection<T, Authenticated>) -> Self {
         Self { connection }
@@ -81,7 +81,7 @@ where
 #[derive(Debug)]
 pub struct Client<T>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     connection: Connection<T, Authenticated>,
 }
@@ -108,7 +108,7 @@ impl Client<TcpStream> {
 
 impl<T> Client<T>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     /// Returns new client instance with the given connection bound to it. Works only with authenticated connections.
     ///
@@ -238,7 +238,7 @@ where
     /// # fn main() -> Result<()> {
     /// let mut client = Client::connect("localhost", 1984, "admin", "admin")?;
     /// client.create("taurus")?.without_input()?;
-    /// client.add("bogdanoff", &mut "<wojak pink_index=\"69\"></wojak>".as_bytes())?;
+    /// client.add("bogdanoff", "<wojak pink_index=\"69\"></wojak>")?;
     /// # Ok(())
     /// # }
     /// ```
@@ -284,7 +284,7 @@ where
     }
 }
 
-impl<T: DatabaseStream> Clone for Client<T> {
+impl<T: Stream> Clone for Client<T> {
     fn clone(&self) -> Self {
         Self {
             connection: self.connection.try_clone().unwrap(),
@@ -292,7 +292,7 @@ impl<T: DatabaseStream> Clone for Client<T> {
     }
 }
 
-impl<T: DatabaseStream> HasConnection<T> for Client<T> {
+impl<T: Stream> HasConnection<T> for Client<T> {
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
         &mut self.connection
     }
@@ -309,7 +309,7 @@ impl<T: DatabaseStream> HasConnection<T> for Client<T> {
 #[derive(Debug)]
 pub struct QueryWithOptionalInfo<'a, T, R>
 where
-    T: DatabaseStream,
+    T: Stream,
     R: AsResource<'a>,
 {
     phantom: PhantomData<&'a ()>,
@@ -319,7 +319,7 @@ where
 
 impl<'a, T, R> QueryWithOptionalInfo<'a, T, R>
 where
-    T: DatabaseStream,
+    T: Stream,
     R: AsResource<'a>,
 {
     fn new(client: Client<T>, query: R) -> Self {
@@ -364,7 +364,7 @@ mod tests {
 
     impl<T> Client<T>
     where
-        T: DatabaseStream,
+        T: Stream,
     {
         pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
             self.connection

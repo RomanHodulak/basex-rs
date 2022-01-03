@@ -1,6 +1,6 @@
 use crate::connection::Authenticated;
 use crate::resource::AsResource;
-use crate::{Connection, DatabaseStream, Result};
+use crate::{Connection, Result, Stream};
 use std::net::IpAddr;
 
 /// Writes argument values using a [`Connection`].
@@ -8,23 +8,23 @@ use std::net::IpAddr;
 /// # Examples
 ///
 /// ```
-/// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
-/// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+/// # use basex::{ArgumentWriter, ClientError, Stream, Result};
+/// fn write_xquery<T: Stream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
 ///     writer.write("data")
 /// }
 /// ```
 /// [`Connection`]: crate::connection::Connection
 #[derive(Debug)]
-pub struct ArgumentWriter<'a, T: DatabaseStream>(pub &'a mut Connection<T, Authenticated>);
+pub struct ArgumentWriter<'a, T: Stream>(pub &'a mut Connection<T, Authenticated>);
 
-impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
+impl<'a, T: Stream> ArgumentWriter<'a, T> {
     /// Writes bytes from the given reader as the argument's value.
     ///
     /// # Examples
     ///
     /// ```
-    /// # use basex::{ArgumentWriter, ClientError, DatabaseStream, Result};
-    /// fn write_xquery<T: DatabaseStream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+    /// # use basex::{ArgumentWriter, ClientError, Stream, Result};
+    /// fn write_xquery<T: Stream>(writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
     ///     writer.write("data")
     /// }
     /// ```
@@ -36,7 +36,7 @@ impl<'a, T: DatabaseStream> ArgumentWriter<'a, T> {
 /// Makes this type able to be interpreted as XQuery argument value.
 pub trait ToQueryArgument<'a> {
     /// Writes this value using the given `writer` as an XQuery argument value.
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()>;
+    fn write_xquery<T: Stream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()>;
 
     /// The type name of the XQuery representation.
     ///
@@ -55,7 +55,7 @@ pub trait ToQueryArgument<'a> {
 macro_rules! query_argument_using_to_string {
     ($($t:ty as $name:expr),*) => {
         $(impl<'a> ToQueryArgument<'a> for $t {
-            fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+            fn write_xquery<T: Stream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
                 writer.write(&mut self.to_string().as_str().as_bytes())
             }
 
@@ -82,7 +82,7 @@ query_argument_using_to_string![
 ];
 
 impl<'a> ToQueryArgument<'a> for &'a str {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+    fn write_xquery<T: Stream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.as_bytes())
     }
 
@@ -92,7 +92,7 @@ impl<'a> ToQueryArgument<'a> for &'a str {
 }
 
 impl<'a> ToQueryArgument<'a> for String {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+    fn write_xquery<T: Stream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         writer.write(&mut self.as_bytes())
     }
 
@@ -102,7 +102,7 @@ impl<'a> ToQueryArgument<'a> for String {
 }
 
 impl<'a, 'b, D: ToQueryArgument<'a>> ToQueryArgument<'a> for &'b D {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+    fn write_xquery<T: Stream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         (*self).write_xquery(writer)
     }
 
@@ -112,7 +112,7 @@ impl<'a, 'b, D: ToQueryArgument<'a>> ToQueryArgument<'a> for &'b D {
 }
 
 impl<'a, D: ToQueryArgument<'a>> ToQueryArgument<'a> for Option<D> {
-    fn write_xquery<T: DatabaseStream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
+    fn write_xquery<T: Stream>(&self, writer: &mut ArgumentWriter<'_, T>) -> Result<()> {
         match self.as_ref() {
             Some(data) => data.write_xquery(writer),
             None => "".write_xquery(writer),

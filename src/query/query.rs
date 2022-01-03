@@ -4,18 +4,20 @@ use crate::query::compiler::{Info, RawInfo};
 use crate::query::response::Response;
 use crate::query::serializer::Options;
 use crate::resource::AsResource;
-use crate::{Client, Connection, DatabaseStream, Result};
+use crate::{Client, Connection, Result, Stream};
 use std::marker::PhantomData;
 use std::str::FromStr;
 
-/// Query that has its compiler [`info`] collected.
+/// [`Query`] that has its compiler [`info`] collected. Adds some overhead to compile time.
 ///
+/// [`Query`]: self::Query
 /// [`info`]: self::Query::info
 #[derive(Debug)]
 pub struct WithInfo;
 
-/// Query that has no compiler [`info`] collected. Improves query performance due to the reduced overhead.
+/// [`Query`] that has no compiler [`info`] collected. Removes some overhead from compile time.
 ///
+/// [`Query`]: self::Query
 /// [`info`]: self::Query::info
 #[derive(Debug)]
 pub struct WithoutInfo;
@@ -39,14 +41,14 @@ enum Command {
 #[derive(Debug)]
 pub struct ArgumentWithOptionalValue<'a, T, HasInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     query: &'a mut Query<T, HasInfo>,
 }
 
 impl<'a, T, HasInfo> ArgumentWithOptionalValue<'a, T, HasInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     pub(crate) fn new(query: &'a mut Query<T, HasInfo>) -> Self {
         Self { query }
@@ -88,7 +90,7 @@ where
 #[derive(Debug)]
 pub struct Query<T, HasInfo = WithoutInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     has_info: PhantomData<HasInfo>,
     id: String,
@@ -97,15 +99,15 @@ where
 
 impl<T, HasInfo> Query<T, HasInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     /// Deletes the query.
     ///
     /// # Examples
     ///
     /// ```
-    /// # use basex::{Query, DatabaseStream, Result};
-    /// # fn example<T: DatabaseStream, HasInfo>(mut query: Query<T, HasInfo>) -> Result<()> {
+    /// # use basex::{Query, Stream, Result};
+    /// # fn example<T: Stream, HasInfo>(mut query: Query<T, HasInfo>) -> Result<()> {
     /// // Delete the query, moves back the `client`.
     /// let client = query.close()?;
     /// // Current function now owns `client`.
@@ -286,7 +288,7 @@ where
     }
 }
 
-impl<T: DatabaseStream, HasInfo> HasConnection<T> for Query<T, HasInfo> {
+impl<T: Stream, HasInfo> HasConnection<T> for Query<T, HasInfo> {
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
         self.client.connection()
     }
@@ -294,7 +296,7 @@ impl<T: DatabaseStream, HasInfo> HasConnection<T> for Query<T, HasInfo> {
 
 impl<T> Query<T, WithoutInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     /// Attaches [`Query`] to an existing query in the session.
     ///
@@ -310,7 +312,7 @@ where
 
 impl<T> Query<T, WithInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     /// Attaches [`Query`] to an existing query in the session.
     ///
@@ -328,8 +330,8 @@ where
     /// # Examples
     ///
     /// ```
-    /// # use basex::{Query, DatabaseStream, WithInfo, compiler::Info, Result};
-    /// # fn example<T: DatabaseStream>(mut query: Query<T, WithInfo>) -> Result<()> {
+    /// # use basex::{Query, Stream, WithInfo, compiler::Info, Result};
+    /// # fn example<T: Stream>(mut query: Query<T, WithInfo>) -> Result<()> {
     /// let info = query.info()?;
     /// println!(
     ///     "Compilation took {} ms, query: {}",
@@ -358,7 +360,7 @@ mod tests {
 
     impl<T, HasInfo> Query<T, HasInfo>
     where
-        T: DatabaseStream,
+        T: Stream,
     {
         pub(crate) fn into_inner(self) -> Connection<T, Authenticated> {
             self.client.into_inner()

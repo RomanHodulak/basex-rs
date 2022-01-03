@@ -1,11 +1,9 @@
-//! [Serialization](https://docs.basex.org/wiki/Serialization) parameters define how XQuery items and XML nodes will be
-//! serialized when returned to the client.
+//! Defines how XQuery items and XML nodes will be [serialized] when returned to the client using [`Options`].
 //!
-//! The official parameters are defined in the
-//! [W3C XQuery Serialization 3.1](https://www.w3.org/TR/xslt-xquery-serialization-31) document.
+//! The official parameters are defined in the [W3C XQuery Serialization 3.1] document.
 //!
 //! # Examples
-//!
+//! The following code could be useful in some kind of a one-off setup before executing queries:
 //! ```
 //! use basex::Client;
 //! use basex::serializer::Options;
@@ -35,11 +33,14 @@
 //! # Ok(())
 //! # }
 //! ```
-//! Reading result from a [`Query`] would now be affected by the options. In this case the difference as apposed to the
-//! default would be that XML nodes are not indented from the beginning of a line.
+//! Reading result from a [`Query`] would now be affected by the [`Options`]. In this case the difference as apposed to
+//! the default would be that XML nodes are not indented from the beginning of a line.
 //!
-//! [`Query`]: super::Query
-use crate::{Client, DatabaseStream};
+//! [`Query`]: crate::Query
+//! [`Options`]: crate::serializer::Options
+//! [serialized]: https://docs.basex.org/wiki/Serialization
+//! [W3C XQuery Serialization 3.1]: https://www.w3.org/TR/xslt-xquery-serialization-31
+use crate::{Client, Stream};
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -127,7 +128,7 @@ impl Options {
     }
 
     /// Saves the options to the server serializer for current session.
-    pub fn save<T: DatabaseStream>(&self, client: Client<T>) -> crate::Result<Client<T>> {
+    pub fn save<T: Stream>(&self, client: Client<T>) -> crate::Result<Client<T>> {
         let (client, _) = client
             .execute(&format!("SET SERIALIZER {}", self.to_string()))?
             .close()?;

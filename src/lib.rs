@@ -27,6 +27,7 @@
 //! ```
 //!
 //! [BaseX]: http://basex.org
+
 #![warn(rust_2018_idioms)]
 #![warn(rust_2021_compatibility)]
 #![warn(missing_debug_implementations)]
@@ -40,6 +41,7 @@
 #![warn(rustdoc::invalid_html_tags)]
 #![warn(rustdoc::invalid_rust_codeblocks)]
 #![warn(rustdoc::bare_urls)]
+
 mod client;
 mod connection;
 mod errors;
@@ -56,7 +58,8 @@ pub use query::{
     compiler, serializer, ArgumentWithOptionalValue, ArgumentWriter, Query, QueryFailed, Response as QueryResponse,
     ToQueryArgument, WithInfo, WithoutInfo,
 };
-pub use stream::DatabaseStream;
+pub use resource::AsResource;
+pub use stream::Stream;
 
 /// A [`Result`] with its [`Err`] variant set to [`ClientError`].
 ///

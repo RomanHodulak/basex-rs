@@ -1,6 +1,6 @@
 use crate::connection::{Authenticated, HasConnection};
 use crate::errors::ClientError::CommandFailed;
-use crate::{Client, Connection, DatabaseStream, Result};
+use crate::{Client, Connection, Result, Stream};
 use std::io::Read;
 
 /// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
@@ -35,7 +35,7 @@ use std::io::Read;
 #[derive(Debug)]
 pub struct Response<T>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     client: Client<T>,
     info_prefix: Option<Vec<u8>>,
@@ -45,7 +45,7 @@ where
 
 impl<T> Response<T>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     pub(crate) fn new(client: Client<T>) -> Self {
         Self {
@@ -105,7 +105,7 @@ where
     }
 }
 
-impl<T: DatabaseStream> HasConnection<T> for Response<T> {
+impl<T: Stream> HasConnection<T> for Response<T> {
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
         self.client.connection()
     }
@@ -113,7 +113,7 @@ impl<T: DatabaseStream> HasConnection<T> for Response<T> {
 
 impl<T> Read for Response<T>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.info_prefix.is_some() {

@@ -1,11 +1,17 @@
 use crate::connection::{Authenticated, HasConnection};
 use crate::errors::ClientError;
 use crate::query::QueryFailed;
-use crate::{Connection, DatabaseStream, Query, Result};
+use crate::{Connection, Query, Result, Stream};
 use std::io::Read;
 
-/// Response from a command. Depending on the command, it may or may not return UTF-8 string. Result is read using
-/// the [`Read`] trait.
+/// Response from a [`Query`], produced as an output when you [`execute`] it. Use the [`Read`] trait to read the result.
+///
+/// The result can be interpreted as UTF-8 characters (and therefore [`read_to_string`]) unless:
+/// * [`Query`] result contains binary blobs.
+/// * [`Serializer`] is set to different encoding than UTF-8.
+///
+/// When done with reading, [`close`] the response. Doing so gives you back the [`Query`] instance whose execution
+/// created this response.
 ///
 /// # Examples
 ///
@@ -33,11 +39,16 @@ use std::io::Read;
 /// # }
 /// ```
 ///
+/// [`Query`]: crate::Query
+/// [`close`]: crate::Query::close
+/// [`execute`]: crate::Query::execute
+/// [`Serializer`]: crate::serializer
 /// [`Read`]: std::io::Read
+/// [`read_to_string`]: std::io::Read::read_to_string
 #[derive(Debug)]
 pub struct Response<T, HasInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     query: Query<T, HasInfo>,
     info_prefix: Option<Vec<u8>>,
@@ -48,7 +59,7 @@ where
 
 impl<T, HasInfo> Response<T, HasInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     pub(crate) fn new(query: Query<T, HasInfo>) -> Self {
         Self {
@@ -109,7 +120,7 @@ where
     }
 }
 
-impl<T: DatabaseStream, HasInfo> HasConnection<T> for Response<T, HasInfo> {
+impl<T: Stream, HasInfo> HasConnection<T> for Response<T, HasInfo> {
     fn connection(&mut self) -> &mut Connection<T, Authenticated> {
         self.query.connection()
     }
@@ -117,7 +128,7 @@ impl<T: DatabaseStream, HasInfo> HasConnection<T> for Response<T, HasInfo> {
 
 impl<T, HasInfo> Read for Response<T, HasInfo>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         if self.result_complete {

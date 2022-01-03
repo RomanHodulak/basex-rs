@@ -1,5 +1,6 @@
 use std::io::Read;
 
+/// Responsible for converting to a reader. Implementors of this trait are called 'resources'.
 pub trait AsResource<'a> {
     type Reader: Read;
 

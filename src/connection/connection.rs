@@ -1,28 +1,34 @@
 use crate::connection::escape_reader::EscapeReader;
-use crate::{ClientError, DatabaseStream, Result};
+use crate::{ClientError, Result, Stream};
 use std::io::{copy, Read};
 use std::marker::PhantomData;
 
-/// Connection state before authentication for the session.
+/// [`Connection`] state before authentication for the session.
+///
+/// [`Connection`]: crate::Connection
 #[derive(Debug, Clone)]
 pub struct Unauthenticated;
 
-/// Connection state after successful authentication for the session.
+/// [`Connection`] state after successful authentication for the session.
+///
+/// [`Connection`]: crate::Connection
 #[derive(Debug, Clone)]
 pub struct Authenticated;
 
-/// Responsible for low-level communication with the stream. It handles
-/// [authentication](https://docs.basex.org/wiki/Server_Protocol#Authentication), sends commands and reads responses.
+/// Responsible for low-level communication with the [`Stream`]. It handles [authentication], sends commands and
+/// reads responses.
 ///
 /// As opposed to the [`Client`] or [`Query`] can do, connection does not understand what commands do or how to parse
 /// responses. It can only send them, send arguments and be read like a stream.
 ///
-/// [`Client`]: crate::client::Client
-/// [`Query`]: crate::query::Query
+/// [`Client`]: crate::Client
+/// [`Query`]: crate::Query
+/// [`Stream`]: crate::Stream
+/// [authentication]: https://docs.basex.org/wiki/Server_Protocol#Authentication
 #[derive(Debug)]
 pub struct Connection<T, State = Unauthenticated>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     state: PhantomData<State>,
     stream: T,
@@ -30,7 +36,7 @@ where
 
 impl<T> Connection<T, Unauthenticated>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     /// Creates a connection that communicates with the database via the provided `stream`.
     pub fn new(stream: T) -> Self {
@@ -76,7 +82,7 @@ where
 
 impl<T> Connection<T, Authenticated>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     pub(crate) fn send_cmd(&mut self, code: u8) -> Result<&mut Self> {
         self.stream.write_all(&[code])?;
@@ -119,7 +125,7 @@ where
 
 impl<T, State> Read for Connection<T, State>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         match buf.is_empty() {
@@ -131,7 +137,7 @@ where
 
 impl<T, State> Connection<T, State>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     /// Creates a new connection with a new independently owned handle to the underlying socket.
     pub(crate) fn try_clone(&self) -> Result<Self> {
@@ -159,7 +165,7 @@ where
 
 impl<T, State> Clone for Connection<T, State>
 where
-    T: DatabaseStream,
+    T: Stream,
 {
     fn clone(&self) -> Self {
         self.try_clone().unwrap()
@@ -170,7 +176,7 @@ where
 ///
 /// [`Connection`]: self::Connection
 /// [`HasConnection::connection`]: self::HasConnection::connection
-pub(crate) trait HasConnection<T: DatabaseStream> {
+pub(crate) trait HasConnection<T: Stream> {
     /// Returns mutable reference to wrapped [`Connection`]. This is useful to make low-level calls to the server
     /// protocol but can result in unexpected state changes when used improperly.
     ///
@@ -186,7 +192,7 @@ mod tests {
 
     impl<T, State> Connection<T, State>
     where
-        T: DatabaseStream,
+        T: Stream,
     {
         pub(crate) fn into_inner(self) -> T {
             self.stream

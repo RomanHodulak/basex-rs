@@ -1,6 +1,8 @@
 use std::str::FromStr;
 
-/// The error type for failed query execution.
+/// Error that occurs when the server fails to produce the [`Query`] result.
+///
+/// [`Query`]: crate::Query
 #[derive(Debug)]
 pub struct QueryFailed {
     raw: String,

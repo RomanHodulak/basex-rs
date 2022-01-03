@@ -51,7 +51,7 @@ impl Write for MockStream {
     }
 }
 
-impl DatabaseStream for MockStream {
+impl Stream for MockStream {
     fn try_clone(&self) -> Result<Self> {
         let mut cloned_buff = CircBuf::with_capacity(self.response.len()).unwrap();
         copy(&mut self.response.get_bytes()[0], &mut cloned_buff)?;
@@ -82,7 +82,7 @@ impl Write for FailingStream {
     }
 }
 
-impl DatabaseStream for FailingStream {
+impl Stream for FailingStream {
     fn try_clone(&self) -> Result<Self> {
         unimplemented!()
     }
