@@ -17,8 +17,8 @@ enum Command {
 
 /// Encapsulates a command with optional input. To execute it, either call [`with_input`] or [`without_input`].
 ///
-/// [`with_input`]: self::CommandWithOptionalInput::with_input
-/// [`without_input`]: self::CommandWithOptionalInput::without_input
+/// [`with_input`]: crate::CommandWithOptionalInput::with_input
+/// [`without_input`]: crate::CommandWithOptionalInput::without_input
 #[derive(Debug)]
 pub struct CommandWithOptionalInput<'a, T>
 where
@@ -77,7 +77,7 @@ where
 /// # }
 /// ```
 ///
-/// [`Client::connect`]: crate::client::Client<TcpStream>::connect
+/// [`Client::connect`]: crate::Client<TcpStream>::connect
 #[derive(Debug)]
 pub struct Client<T>
 where
@@ -277,8 +277,8 @@ where
     /// # }
     /// ```
     ///
-    /// [`with_info`]: self::QueryWithOptionalInfo::with_info
-    /// [`without_info`]: self::QueryWithOptionalInfo::without_info
+    /// [`with_info`]: crate::QueryWithOptionalInfo::with_info
+    /// [`without_info`]: crate::QueryWithOptionalInfo::without_info
     pub fn query<'a, R: AsResource<'a>>(self, query: R) -> Result<QueryWithOptionalInfo<'a, T, R>> {
         Ok(QueryWithOptionalInfo::new(self, query))
     }
@@ -298,6 +298,14 @@ impl<T: DatabaseStream> HasConnection<T> for Client<T> {
     }
 }
 
+/// Encapsulates a [`Query`] with optional flag to collect compiler info. To create the query, either call
+/// [`with_info`] or [`without_info`].
+///
+/// Collecting compiler info adds overhead to the execution so use [`with_info`] only when you need it.
+///
+/// [`Query`]: crate::Query
+/// [`with_info`]: crate::QueryWithOptionalInfo::with_info
+/// [`without_info`]: crate::QueryWithOptionalInfo::without_info
 #[derive(Debug)]
 pub struct QueryWithOptionalInfo<'a, T, R>
 where
@@ -322,12 +330,20 @@ where
         }
     }
 
+    /// Creates a [`Query`] that collects compiler info. Additionally, it has the [`Query::info`] method to read it.
+    ///
+    /// [`Query`]: crate::Query
+    /// [`Query::info`]: crate::Query::info
     pub fn with_info(self) -> Result<Query<T, WithInfo>> {
         let (mut client, _) = self.client.execute("SET QUERYINFO true")?.close()?;
         let id = Self::query(&mut client, self.query)?;
         Ok(Query::with_info(id, client))
     }
 
+    /// Creates a [`Query`] that does not collect compiler info. It does not have the [`Query::info`] method.
+    ///
+    /// [`Query`]: crate::Query
+    /// [`Query::info`]: crate::Query::info
     pub fn without_info(self) -> Result<Query<T, WithoutInfo>> {
         let (mut client, _) = self.client.execute("SET QUERYINFO false")?.close()?;
         let id = Self::query(&mut client, self.query)?;

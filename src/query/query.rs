@@ -34,8 +34,8 @@ enum Command {
 /// Encapsulates a query argument with optional value. To bind the argument, either call [`with_input`] or
 /// [`without_input`].
 ///
-/// [`with_input`]: self::CommandWithOptionalInput::with_input
-/// [`without_input`]: self::CommandWithOptionalInput::without_input
+/// [`with_input`]: crate::CommandWithOptionalInput::with_input
+/// [`without_input`]: crate::CommandWithOptionalInput::without_input
 #[derive(Debug)]
 pub struct ArgumentWithOptionalValue<'a, T, HasInfo>
 where
@@ -144,8 +144,8 @@ where
     /// # }
     /// ```
     ///
-    /// [`with_value`]: self::ArgumentWithOptionalValue::with_value
-    /// [`without_value`]: self::ArgumentWithOptionalValue::without_value
+    /// [`with_value`]: crate::ArgumentWithOptionalValue::with_value
+    /// [`without_value`]: crate::ArgumentWithOptionalValue::without_value
     pub fn bind(&mut self, name: &str) -> Result<ArgumentWithOptionalValue<'_, T, HasInfo>> {
         let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Bind as u8)?;
@@ -340,7 +340,7 @@ where
     /// # }
     /// ```
     ///
-    /// [`Info`]: super::analysis::Info
+    /// [`Info`]: crate::compiler::Info
     pub fn info(&mut self) -> Result<impl Info> {
         let connection: &mut Connection<T, Authenticated> = self.client.connection();
         connection.send_cmd(Command::Info as u8)?;
