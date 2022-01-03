@@ -2,5 +2,5 @@
 mod client;
 mod response;
 
-pub use self::client::Client;
+pub use self::client::{Client, CommandWithOptionalInput, QueryWithOptionalInfo};
 pub use self::response::Response;

@@ -49,10 +49,13 @@ mod stream;
 #[cfg(test)]
 mod tests;
 
-pub use client::Client;
-pub use connection::Connection;
+pub use client::{Client, CommandWithOptionalInput, QueryWithOptionalInfo, Response as CommandResponse};
+pub use connection::{Authenticated, Connection, Unauthenticated};
 pub use errors::ClientError;
-pub use query::{compiler, serializer, ArgumentWriter, Query, ToQueryArgument, WithInfo, WithoutInfo};
+pub use query::{
+    compiler, serializer, ArgumentWithOptionalValue, ArgumentWriter, Query, QueryFailed, Response as QueryResponse,
+    ToQueryArgument, WithInfo, WithoutInfo,
+};
 pub use stream::DatabaseStream;
 
 /// A [`Result`] with its [`Err`] variant set to [`ClientError`].
