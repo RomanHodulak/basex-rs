@@ -20,9 +20,11 @@ rustdoc-args = ["--document-private-items"]
 
 [dependencies]
 md5 = "<=0.7.0,>=0.3.0"
+tokio = { version = "1", features = ["default", "net", "io-util", "test-util", "macros"] }
+pin-project = "1"
 
 [dev-dependencies]
 matches = "<=0.1.9,>=0.1.0"
 rust-embed = "<7,>=6.3.0"
 circbuf = "0.2.0"
-test-case = "<2,>=0.3.2"
+test-case = "<1.2.1,>=0.3.2"

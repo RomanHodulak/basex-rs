@@ -42,6 +42,7 @@
 #![warn(rustdoc::invalid_rust_codeblocks)]
 #![warn(rustdoc::bare_urls)]
 
+pub mod asynchronous;
 mod client;
 mod connection;
 mod errors;
