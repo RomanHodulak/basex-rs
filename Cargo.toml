@@ -25,6 +25,9 @@ tokio = { version = "1", features = ["default", "net", "io-util", "test-util", "
 pin-project = "1"
 
 [dev-dependencies]
+rocket = "<=0.5.0-rc.2,>=0.5.0-rc.1"
+rocket-sync = { version = "=0.4.11", package = "rocket" }
+tempfile = "<4,>=3"
 matches = "<=0.1.9,>=0.1.0"
 rust-embed = "<7,>=6.3.0"
 circbuf = "0.2.0"
