@@ -60,7 +60,10 @@ where
     /// Sends the value to the argument, returning back the mutable reference to [`Query`].
     ///
     /// [`Query`]: self::Query
-    pub async fn with_value<'b, A: ToQueryArgument<'b>>(mut self, value: A) -> Result<&'a mut Query<T, HasInfo>> {
+    pub async fn with_value<'b, A: ToQueryArgument<'b> + 'b + 'a>(
+        mut self,
+        value: &'b A,
+    ) -> Result<&'a mut Query<T, HasInfo>> {
         let mut connection = self.query.as_mut().connection();
         value.write_xquery(ArgumentWriter(&mut connection)).await?;
         connection.send_arg(&mut A::xquery_type().as_bytes()).await?;

@@ -40,9 +40,13 @@ impl<'a, T: AsyncWriteExt + AsyncReadExt + Unpin> ArgumentWriter<'a, T> {
 }
 
 /// Makes this type able to be interpreted as XQuery argument value.
+#[async_trait]
 pub trait ToQueryArgument<'a> {
     /// Writes this value using the given `writer` as an XQuery argument value.
-    fn write_xquery<'f, T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(&'f self, writer: ArgumentWriter<'f, T>) -> Pin<Box<dyn Future<Output = Result<()>> + 'f>>;
+    async fn write_xquery<T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(
+        &self,
+        writer: ArgumentWriter<'_, T>,
+    ) -> Result<()>;
 
     /// The type name of the XQuery representation.
     ///
@@ -60,14 +64,17 @@ pub trait ToQueryArgument<'a> {
 /// [`to_string`]: std::string::ToString::to_string
 macro_rules! query_argument_using_to_string {
     ($($t:ty as $name:expr),*) => {
-        $(
+        $(#[async_trait]
         impl<'a> ToQueryArgument<'a> for $t {
-            fn write_xquery<'f, T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(&'f self, mut writer: ArgumentWriter<'f, T>) -> Pin<Box<dyn Future<Output = Result<()>> + 'f>> {
+            async fn write_xquery<T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(
+                &self,
+                mut writer: ArgumentWriter<'_, T>
+            ) -> Result<()> {
                 let data = self.to_string();
+                let mut data = data.as_bytes();
 
-                Box::pin(async move {
-                    writer.write(&mut data.as_bytes()).await
-                })
+                let f: Pin<Box<dyn Future<Output = Result<()>> + Send>> = Box::pin(writer.write(&mut data));
+                f.await
             }
 
             fn xquery_type() -> String {
@@ -92,13 +99,16 @@ query_argument_using_to_string![
     IpAddr as "xs:string"
 ];
 
+#[async_trait]
 impl<'a> ToQueryArgument<'a> for &'a str {
-    fn write_xquery<'f, T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(&'f self, mut writer: ArgumentWriter<'f, T>) -> Pin<Box<dyn Future<Output = Result<()>> + 'f>> {
-        let mut data = self.as_bytes().clone();
+    async fn write_xquery<T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(
+        &self,
+        mut writer: ArgumentWriter<'_, T>,
+    ) -> Result<()> {
+        let mut data = self.as_bytes();
 
-        Box::pin(async move {
-            writer.write(&mut data).await
-        })
+        let fut: Pin<Box<dyn Future<Output = Result<()>> + Send>> = Box::pin(writer.write(&mut data));
+        fut.await
     }
 
     fn xquery_type() -> String {
@@ -106,13 +116,16 @@ impl<'a> ToQueryArgument<'a> for &'a str {
     }
 }
 
+#[async_trait]
 impl<'a> ToQueryArgument<'a> for String {
-    fn write_xquery<'f, T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(&'f self, mut writer: ArgumentWriter<'f, T>) -> Pin<Box<dyn Future<Output = Result<()>> + 'f>> {
-        let mut data = self.as_bytes().clone();
+    async fn write_xquery<T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(
+        &self,
+        mut writer: ArgumentWriter<'_, T>,
+    ) -> Result<()> {
+        let mut data = self.as_bytes();
 
-        Box::pin(async move {
-            writer.write(&mut data).await
-        })
+        let fut: Pin<Box<dyn Future<Output = Result<()>> + Send>> = Box::pin(writer.write(&mut data));
+        fut.await
     }
 
     fn xquery_type() -> String {
@@ -120,11 +133,13 @@ impl<'a> ToQueryArgument<'a> for String {
     }
 }
 
+#[async_trait]
 impl<'a, 'b, D: ToQueryArgument<'a> + Sync> ToQueryArgument<'a> for &'b D {
-    fn write_xquery<'f, T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(&'f self, writer: ArgumentWriter<'f, T>) -> Pin<Box<dyn Future<Output = Result<()>> + 'f>> {
-        Box::pin(async move {
-            (*self).write_xquery(writer).await
-        })
+    async fn write_xquery<T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(
+        &self,
+        writer: ArgumentWriter<'_, T>,
+    ) -> Result<()> {
+        (*self).write_xquery(writer).await
     }
 
     fn xquery_type() -> String {
@@ -132,16 +147,17 @@ impl<'a, 'b, D: ToQueryArgument<'a> + Sync> ToQueryArgument<'a> for &'b D {
     }
 }
 
+#[async_trait]
 impl<'a, D: ToQueryArgument<'a> + Sync> ToQueryArgument<'a> for Option<D> {
-    fn write_xquery<'f, T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(&'f self, writer: ArgumentWriter<'f, T>) -> Pin<Box<dyn Future<Output = Result<()>> + 'f>> {
-        let this = self.clone();
-
-        Box::pin(async move {
-            match this.as_ref() {
-                Some(data) => data.write_xquery(writer),
-                None => "".write_xquery(writer),
-            }.await
-        })
+    async fn write_xquery<T: AsyncWriteExt + AsyncReadExt + Unpin + Sync + Send>(
+        &self,
+        writer: ArgumentWriter<'_, T>,
+    ) -> Result<()> {
+        match self.as_ref() {
+            Some(data) => data.write_xquery(writer),
+            None => "".write_xquery(writer),
+        }
+        .await
     }
 
     fn xquery_type() -> String {

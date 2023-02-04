@@ -7,21 +7,13 @@ pub trait AsResource<'a> {
     fn into_read(self) -> Self::Reader;
 }
 
-impl<'a, T> AsResource<'a> for &'a mut T
+impl<'a, T> AsResource<'a> for T
 where
     T: AsyncRead + Unpin,
 {
-    type Reader = &'a mut T;
+    type Reader = T;
 
     fn into_read(self) -> Self::Reader {
         self
-    }
-}
-
-impl<'a> AsResource<'a> for &'a str {
-    type Reader = &'a [u8];
-
-    fn into_read(self) -> Self::Reader {
-        self.as_bytes()
     }
 }

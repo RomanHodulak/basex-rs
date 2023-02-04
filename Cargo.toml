@@ -19,6 +19,7 @@ include = [
 rustdoc-args = ["--document-private-items"]
 
 [dependencies]
+async-trait = "<0.2,>=0.1.0"
 md5 = "<=0.7.0,>=0.3.0"
 tokio = { version = "1", features = ["default", "net", "io-util", "test-util", "macros"] }
 pin-project = "1"
